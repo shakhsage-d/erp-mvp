@@ -80,3 +80,57 @@ def test_cashier_can_still_make_sales(client):
         headers=cashier_headers,
     )
     assert resp.status_code == 200
+
+
+def test_cashier_cannot_manage_inventory(client):
+    """Sotuvchi mahsulot qo'sha yoki ombor kirimi qila olmasligi kerak —
+    bu omborchining vazifasi."""
+    client.post("/auth/users", json={
+        "full_name": "Sotuvchi", "phone": "+998955555507",
+        "password": "parol123", "role": "cashier",
+    })
+    cashier_headers = _login(client, "+998955555507", "parol123")
+
+    resp = client.post(
+        "/inventory/products",
+        json={"name": "Yangi mahsulot", "sale_price": 1000},
+        headers=cashier_headers,
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "forbidden"
+
+
+def test_storekeeper_can_manage_inventory(client):
+    """Omborchi mahsulot qo'sha va ombor kirimi qila olishi kerak."""
+    client.post("/auth/users", json={
+        "full_name": "Omborchi", "phone": "+998955555508",
+        "password": "parol123", "role": "storekeeper",
+    })
+    storekeeper_headers = _login(client, "+998955555508", "parol123")
+
+    resp = client.post(
+        "/inventory/products",
+        json={"name": "Kartoshka", "sale_price": 4000, "quantity": 20},
+        headers=storekeeper_headers,
+    )
+    assert resp.status_code == 200
+
+
+def test_storekeeper_cannot_make_sale(client):
+    """Omborchi sotuv qila olmasligi kerak — bu sotuvchining vazifasi."""
+    product = client.post("/inventory/products", json={
+        "name": "Sabzi", "sale_price": 2000, "quantity": 15,
+    }).json()
+    client.post("/auth/users", json={
+        "full_name": "Omborchi", "phone": "+998955555509",
+        "password": "parol123", "role": "storekeeper",
+    })
+    storekeeper_headers = _login(client, "+998955555509", "parol123")
+
+    resp = client.post(
+        "/sales/",
+        json={"items": [{"product_id": product["id"], "quantity": 1}]},
+        headers=storekeeper_headers,
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "forbidden"

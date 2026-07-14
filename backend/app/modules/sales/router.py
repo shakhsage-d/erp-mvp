@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.core.tenant import get_current_company_id
+from app.core.permissions import require_permission
 from app.core.exceptions import NotFoundError, InsufficientStockError, EmptyRequestError
 from app.core.logging_config import get_logger
 from app.core.rate_limit import limiter
@@ -39,6 +40,7 @@ def create_sale(
     sale_request: schemas.SaleCreate,
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
+    _: None = Depends(require_permission("sales.create")),
 ):
     """
     Kassir "Sotish" tugmasini bosganda chaqiriladigan asosiy endpoint.

@@ -1,26 +1,27 @@
 """
 modules/auth/router.py
 ------------------------
-Ro'yxatdan o'tish va tizimga kirish.
+Ro'yxatdan o'tish, tizimga kirish va xodim boshqaruvi.
 
-MUHIM: bu — hozircha ENG ODDIY holat (bitta kompaniya = bitta "owner"
-foydalanuvchi). Kelajakda (rollar to'liq ishga tushganda) shu modulga
-"xodim qo'shish" (`POST /auth/users`, faqat owner chaqira oladi) kabi
-qo'shimcha endpointlar qo'shiladi — bu FAYLGA tegilmaydi, mavjud
-`register`/`login` o'zgarmaydi.
+DINAMIK RUXSATLAR: endi `role` oddiy matn emas — har bir foydalanuvchi
+`Role` jadvaliga (`role_id` orqali) bog'langan, ruxsatlar esa
+`RolePermission` orqali aniqlanadi. Standart lavozimlar (owner/
+cashier/storekeeper) `seed.py`da e'lon qilingan va har bir so'rov
+bazasida `ensure_seeded()` orqali avtomatik tayyorlanadi.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.exceptions import ConflictError, UnauthorizedError
-from app.core.tenant import get_current_company_id, require_roles
+from app.core.tenant import get_current_company_id
+from app.core.permissions import require_permission
 from app.core.logging_config import get_logger
 from app.core.rate_limit import limiter
 from app.modules.auth import models, schemas
-from fastapi import Request
+from app.modules.auth.seed import ensure_seeded, get_default_role
 
 router = APIRouter(prefix="/auth", tags=["Auth - Kirish"])
 logger = get_logger(__name__)
@@ -39,12 +40,16 @@ def register(
 ):
     """
     Yangi kompaniya (do'kon/kafe/mehmonxona) va uning birinchi
-    foydalanuvchisini (rol: `owner`) bir vaqtda yaratadi, so'ng
-    darhol kirish uchun token qaytaradi (qayta login qilish shart emas).
+    foydalanuvchisini (lavozim: `owner`) bir vaqtda yaratadi, so'ng
+    darhol kirish uchun token qaytaradi.
     """
+    ensure_seeded(db)  # standart lavozim/ruxsat katalogi shu bazada tayyor bo'lishini ta'minlaydi
+
     existing = db.query(models.User).filter(models.User.phone == payload.phone).first()
     if existing:
         raise ConflictError("Bu telefon raqami bilan foydalanuvchi allaqachon ro'yxatdan o'tgan")
+
+    owner_role = get_default_role(db, "owner")
 
     company = models.Company(name=payload.company_name, business_type=payload.business_type)
     db.add(company)
@@ -55,18 +60,20 @@ def register(
         full_name=payload.owner_full_name,
         phone=payload.phone,
         hashed_password=hash_password(payload.password),
-        role="owner",
+        role_id=owner_role.id,
     )
     db.add(user)
     db.commit()
     db.refresh(company)
     db.refresh(user)
 
-    token = create_access_token({"sub": str(user.id), "company_id": company.id, "role": user.role})
+    token = create_access_token({
+        "sub": str(user.id), "company_id": company.id, "role_id": owner_role.id,
+    })
     logger.info("Yangi kompaniya ro'yxatdan o'tdi: company_id=%s name=%s", company.id, company.name)
 
     return schemas.TokenResponse(
-        access_token=token, company_id=company.id, company_name=company.name, role=user.role,
+        access_token=token, company_id=company.id, company_name=company.name, role=owner_role.name,
     )
 
 
@@ -92,19 +99,22 @@ def login(
         raise UnauthorizedError("Telefon raqami yoki parol noto'g'ri")
 
     company = db.query(models.Company).filter(models.Company.id == user.company_id).first()
+    role = db.query(models.Role).filter(models.Role.id == user.role_id).first()
 
-    token = create_access_token({"sub": str(user.id), "company_id": user.company_id, "role": user.role})
+    token = create_access_token({
+        "sub": str(user.id), "company_id": user.company_id, "role_id": user.role_id,
+    })
     logger.info("Kirish muvaffaqiyatli: company_id=%s user_id=%s", user.company_id, user.id)
 
     return schemas.TokenResponse(
-        access_token=token, company_id=user.company_id, company_name=company.name, role=user.role,
+        access_token=token, company_id=user.company_id, company_name=company.name, role=role.name,
     )
 
 
 @router.post(
     "/users",
     response_model=schemas.EmployeeOut,
-    summary="Yangi xodim qo'shish (faqat egasi)",
+    summary="Yangi xodim qo'shish",
 )
 @limiter.limit("20/minute")
 def create_employee(
@@ -112,25 +122,26 @@ def create_employee(
     payload: schemas.EmployeeCreateRequest,
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
-    _: str = Depends(require_roles("owner")),
+    _: None = Depends(require_permission("employees.manage")),
 ):
     """
-    Do'kon/kafe egasi yangi xodim (sotuvchi yoki omborchi) qo'shadi.
-    Yaratilgan xodim keyin o'z telefon raqami va paroli bilan
-    `/auth/login` orqali kiradi — lekin faqat o'z rolidagi
-    amallarni bajara oladi (masalan sotuvchi moliyaviy hisobotni
-    ko'ra olmaydi).
+    Yangi xodim (sotuvchi yoki omborchi) qo'shadi. Yaratilgan xodim
+    keyin o'z telefon raqami va paroli bilan `/auth/login` orqali
+    kiradi — lekin faqat o'z lavozimidagi ruxsatlar doirasida
+    ishlay oladi.
     """
     existing = db.query(models.User).filter(models.User.phone == payload.phone).first()
     if existing:
         raise ConflictError("Bu telefon raqami bilan foydalanuvchi allaqachon ro'yxatdan o'tgan")
+
+    role = get_default_role(db, payload.role)
 
     user = models.User(
         company_id=company_id,
         full_name=payload.full_name,
         phone=payload.phone,
         hashed_password=hash_password(payload.password),
-        role=payload.role,
+        role_id=role.id,
     )
     db.add(user)
     db.commit()
@@ -138,23 +149,33 @@ def create_employee(
 
     logger.info(
         "Yangi xodim qo'shildi: company=%s user_id=%s role=%s",
-        company_id, user.id, user.role,
+        company_id, user.id, role.name,
     )
-    return user
+    return schemas.EmployeeOut(id=user.id, full_name=user.full_name, phone=user.phone, role=role.name)
 
 
 @router.get(
     "/users",
     response_model=list[schemas.EmployeeOut],
-    summary="Kompaniya xodimlari ro'yxati (faqat egasi)",
+    summary="Kompaniya xodimlari ro'yxati",
 )
 def list_employees(
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
-    _: str = Depends(require_roles("owner")),
+    _: None = Depends(require_permission("employees.manage")),
 ):
     """Shu kompaniyaga tegishli barcha foydalanuvchilar (egasi + xodimlar)."""
-    return db.query(models.User).filter(
+    users = db.query(models.User).filter(
         models.User.company_id == company_id,
         models.User.deleted_at.is_(None),
     ).all()
+
+    role_names = {r.id: r.name for r in db.query(models.Role).all()}
+
+    return [
+        schemas.EmployeeOut(
+            id=u.id, full_name=u.full_name, phone=u.phone,
+            role=role_names.get(u.role_id, "noma'lum"),
+        )
+        for u in users
+    ]

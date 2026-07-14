@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.db.session import get_db
-from app.core.tenant import get_current_company_id, require_roles
+from app.core.tenant import get_current_company_id
+from app.core.permissions import require_permission
 from app.modules.finance import models, schemas
 
 router = APIRouter(prefix="/finance", tags=["FMS - Moliya"])
@@ -17,12 +18,12 @@ router = APIRouter(prefix="/finance", tags=["FMS - Moliya"])
 def list_transactions(
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
-    _: str = Depends(require_roles("owner")),
+    _: None = Depends(require_permission("finance.view")),
 ):
     """
     Barcha pul kirim/chiqimlari tarixi (eng yangisi birinchi) — faqat
-    shu kompaniyaga tegishli. **Faqat egasi (owner)** ko'ra oladi —
-    sotuvchi yoki omborchi moliyaviy ma'lumotga kira olmaydi.
+    shu kompaniyaga tegishli. `finance.view` ruxsatiga ega
+    foydalanuvchilar (standart holatda faqat egasi) ko'ra oladi.
     """
     return db.query(models.Transaction).filter(
         models.Transaction.company_id == company_id
@@ -36,11 +37,11 @@ def list_transactions(
 def summary(
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
-    _: str = Depends(require_roles("owner")),
+    _: None = Depends(require_permission("finance.view")),
 ):
     """
-    Umumiy kirim, chiqim va sof foydani qaytaradi. **Faqat egasi**
-    ko'ra oladi.
+    Umumiy kirim, chiqim va sof foydani qaytaradi. `finance.view`
+    ruxsatiga ega foydalanuvchilar ko'ra oladi.
     """
     income = db.query(func.sum(models.Transaction.amount)).filter(
         models.Transaction.company_id == company_id,

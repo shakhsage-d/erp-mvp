@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.core.tenant import get_current_company_id
+from app.core.permissions import require_permission
 from app.core.exceptions import NotFoundError
 from app.core.logging_config import get_logger
 from app.core.rate_limit import limiter
@@ -36,6 +37,7 @@ def create_product(
     product: schemas.ProductCreate,
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
+    _: None = Depends(require_permission("inventory.manage")),
 ):
     """
     Yangi mahsulotni ombor katalogiga qo'shadi.
@@ -80,6 +82,7 @@ def stock_in(
     stock_request: schemas.StockInRequest,
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
+    _: None = Depends(require_permission("inventory.manage")),
 ):
     """
     Mavjud mahsulotga yetkazib berilgan tovarni ombor qoldig'iga qo'shadi.

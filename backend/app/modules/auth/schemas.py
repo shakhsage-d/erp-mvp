@@ -21,16 +21,17 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     company_id: int
     company_name: str
-    role: str
+    role: str  # lavozim NOMI (masalan "owner") — ko'rsatish uchun
 
 
 class EmployeeCreateRequest(BaseModel):
-    """Faqat 'owner' chaqira oladi — yangi xodim (sotuvchi/omborchi) qo'shadi."""
+    """Faqat 'employees.manage' ruxsatiga ega foydalanuvchi chaqira oladi."""
     full_name: str = Field(..., min_length=1, max_length=200)
     phone: str = Field(..., min_length=5, max_length=20)
     password: str = Field(..., min_length=6, max_length=100)
-    # Bu yerdan "owner" ATAYLAB chiqarib qoldirilgan — bu endpoint orqali
-    # ikkinchi egani yaratib bo'lmaydi, faqat xodimlarni.
+    # Hozircha faqat standart 2 ta lavozim tanlanadi. Kelajakda (HRMS
+    # bosqichida) bu maydon kompaniyaning o'z maxsus lavozimlaridan
+    # birini ham qabul qiladigan bo'ladi (masalan role_id orqali).
     role: Literal["cashier", "storekeeper"]
 
 
