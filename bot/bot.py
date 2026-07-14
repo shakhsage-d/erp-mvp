@@ -20,6 +20,8 @@ Bot tokenini @BotFather orqali Telegram'da bepul olasiz.
 """
 
 import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 import requests
 from dotenv import load_dotenv
@@ -44,6 +46,35 @@ COMPANY_ID = os.getenv("COMPANY_ID", "1")
 def api_headers():
     """Har bir backend so'roviga qo'shiladigan tenant header'i — bitta joyda."""
     return {"X-Company-Id": COMPANY_ID}
+
+
+# ---------------------------------------------------------------------------
+# RENDER UCHUN KERAK: bot polling (doimiy "tinglash") orqali ishlaydi, hech
+# qanday HTTP portni tinglamaydi. Lekin Render "Web Service" faqat biror
+# portga ulangan xizmatlarni "tirik" deb hisoblaydi. Shuning uchun juda
+# kichik, faqat "men tirikman" deb javob beradigan HTTP server qo'shamiz —
+# bu asosiy bot ishiga umuman aralashmaydi, faqat fonda ishlaydi.
+# UptimeRobot kabi xizmat shu manzilga har necha daqiqada "ping" yuborib
+# tursa, Render bepul tarifda ham botni uxlatib qo'ymaydi.
+# ---------------------------------------------------------------------------
+class _HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"Bot ishlab turibdi")
+
+    def log_message(self, format, *args):
+        pass  # konsolni keraksiz log bilan to'ldirmaslik uchun
+
+
+def _run_health_server():
+    port = int(os.getenv("PORT", "10000"))  # Render $PORT ni shu yerga beradi
+    server = HTTPServer(("0.0.0.0", port), _HealthHandler)
+    server.serve_forever()
+
+
+threading.Thread(target=_run_health_server, daemon=True).start()
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
