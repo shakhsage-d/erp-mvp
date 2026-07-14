@@ -97,22 +97,14 @@ Muhim: kod bir xil, faqat `.env`dagi ulanish manzillari farq qiladi. Hech qachon
 - Alembic sozlandi
 - Backend, frontend, bot — barchasi Render'da bulutda ishga tushirildi
 
-### Bosqich 0.5 — Backend/Core mustahkamlash (HOZIRGI FOKUS)
-Bu bosqichning maqsadi — tizim qancha modul va yuklama qo'shilishidan qat'iy nazar, buzilmaydigan, bashorat qilinadigan tarzda ishlashi. Aniq vazifalar:
+### Bosqich 0.5 — Backend/Core mustahkamlash ✅ YAKUNLANDI
+Barcha 8 band bajarildi: xatolik boshqaruvi, validatsiya, logging, testlar (29 ta), rate limiting, health check, API hujjatlari, backup strategiyasi.
 
-1. **Xatoliklarni birxil boshqarish (error handling)** — har bir modulda xato alohida-alohida ushlanmaydi, markaziy `exception_handler` orqali barcha xatolar bir xil formatda (`{"detail": "...", "code": "..."}`) qaytariladi.
-2. **Kirish ma'lumotlarini qattiq tekshirish (validation)** — Pydantic sxemalarida chegaralar (`min`, `max`, manfiy son bo'lmasligi va h.k.) to'liq belgilanadi — hozircha ko'p joyda "ishonib" qabul qilinmoqda.
-3. **Logging** — har bir muhim amal (kirim, sotuv, xato) tuzilgan log (structured logging) sifatida yoziladi, Render loglarida qidirish oson bo'lishi uchun.
-4. **Avtomatik testlar** — har bir modul uchun kamida asosiy stsenariylar (mahsulot qo'shish, sotish, ombor yetarli emasligi holati) `pytest` bilan yopiladi. Bu — keyingi o'zgarishlarda "eskisini buzmadimmi" degan savolga tezkor javob beradi.
-5. **Rate limiting va asosiy xavfsizlik** — bitta IP/foydalanuvchidan haddan tashqari ko'p so'rovlarning oldini olish (kelajakda ko'p mijoz bo'lganda muhim).
-6. **Health/readiness endpointlari kengaytiriladi** — `/health` endi shunchaki "ok" emas, balki bazaga ulanish holatini ham tekshiradi.
-7. **Backup strategiyasi** — Supabase avtomatik backup sozlamalarini yoqish va tekshirish.
-8. **API hujjatlari** — FastAPI avtomatik yaratadigan `/docs` sahifasi to'liq va tushunarli bo'lishi uchun har bir endpoint'ga tavsif (`description`) qo'shiladi.
-
-### Bosqich 1 — Haqiqiy autentifikatsiya
-- `auth` moduli: Company ro'yxatdan o'tishi, User login (JWT)
-- `get_current_company_id()` endi haqiqiy foydalanuvchidan olinadi
-- Rollar: egasi / sotuvchi / omborchi
+### Bosqich 1 — Haqiqiy autentifikatsiya ✅ YAKUNLANDI
+- `POST /auth/register`, `POST /auth/login` — JWT token asosida
+- Parollar bcrypt bilan xeshlanadi
+- `get_current_company_id()` endi tokendan o'qiydi (eski `X-Company-Id` header butunlay olib tashlandi)
+- **Frontend/bot vaqtincha ishlamay qoladi** — bu ataylab qabul qilingan qaror: backend/core mustahkamligi ustuvor, frontend o'z bosqichida (Bosqich 2) yangilanadi
 
 ### Bosqich 2 — Frontend UI/UX (endi bu bosqichga surildi)
 - Professional dizayn, React'ga o'tish (agar kerak bo'lsa)

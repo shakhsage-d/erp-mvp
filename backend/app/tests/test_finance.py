@@ -4,6 +4,8 @@ tests/test_finance.py
 FMS moduli — kirim/chiqim va xulosa hisobotlari.
 """
 
+from .conftest import other_company_headers
+
 
 def test_summary_is_zero_when_no_transactions(client):
     resp = client.get("/finance/summary")
@@ -26,5 +28,5 @@ def test_transactions_isolated_per_company(client):
     own_summary = client.get("/finance/summary").json()
     assert own_summary["total_income"] == 2 * 9000
 
-    other_summary = client.get("/finance/summary", headers={"X-Company-Id": "2"}).json()
+    other_summary = client.get("/finance/summary", headers=other_company_headers(client)).json()
     assert other_summary["total_income"] == 0

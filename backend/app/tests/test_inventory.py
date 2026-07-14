@@ -4,6 +4,8 @@ tests/test_inventory.py
 WMS moduli uchun asosiy stsenariylar.
 """
 
+from .conftest import other_company_headers
+
 
 def test_create_and_list_product(client):
     """Mahsulot qo'shilsa, ro'yxatda ko'rinishi kerak."""
@@ -60,13 +62,14 @@ def test_stock_in_blocks_cross_tenant_access(client):
     }).json()
 
     # 2-kompaniya nomidan, 1-kompaniyaning mahsulotiga kirim qilishga urinish
+    other_headers = other_company_headers(client)
     resp = client.post(
         "/inventory/stock-in",
         json={"product_id": product["id"], "quantity": 100},
-        headers={"X-Company-Id": "2"},
+        headers=other_headers,
     )
     assert resp.status_code == 404  # "topilmadi" — chunki bu kompaniyaga tegishli emas
 
     # 2-kompaniya bu mahsulotni ro'yxatda ham ko'rmasligi kerak
-    resp = client.get("/inventory/products", headers={"X-Company-Id": "2"})
+    resp = client.get("/inventory/products", headers=other_headers)
     assert resp.json() == []

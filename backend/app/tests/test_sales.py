@@ -4,6 +4,8 @@ tests/test_sales.py
 Savdo moduli — WMS va FMS integratsiyasining eng muhim sinovi.
 """
 
+from .conftest import other_company_headers
+
 
 def _make_product(client, quantity=100):
     return client.post("/inventory/products", json={
@@ -58,7 +60,7 @@ def test_sale_blocks_cross_tenant_product(client):
     resp = client.post(
         "/sales/",
         json={"items": [{"product_id": product["id"], "quantity": 1}]},
-        headers={"X-Company-Id": "2"},
+        headers=other_company_headers(client),
     )
     assert resp.status_code == 404
 

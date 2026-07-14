@@ -42,3 +42,15 @@ class EmptyRequestError(AppError):
     """So'rovda bo'lishi shart bo'lgan ma'lumot (masalan chek qatorlari) yo'q."""
     status_code = 400
     code = "empty_request"
+
+
+class ConflictError(AppError):
+    """Bu ma'lumot (masalan telefon raqami) allaqachon band."""
+    status_code = 409
+    code = "conflict"
+
+
+class UnauthorizedError(AppError):
+    """Login/parol noto'g'ri, yoki token yaroqsiz/muddati tugagan."""
+    status_code = 401
+    code = "unauthorized"

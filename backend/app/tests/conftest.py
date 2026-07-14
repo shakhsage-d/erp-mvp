@@ -5,10 +5,12 @@ Testlar uchun umumiy sozlamalar (fixtures).
 
 MUHIM: testlar HAQIQIY (Supabase) bazaga tegmaydi — har bir test
 o'zining vaqtinchalik, xotieradagi SQLite bazasida ishlaydi va test
-tugagach yo'q qilinadi. Bu shuni anglatadi:
-  - Testlarni istalgancha, xohlagan vaqtda ishga tushirish mumkin —
-    haqiqiy ma'lumotlarga zarar yetkazmaydi
-  - Testlar bir-biriga bog'liq emas, har biri "toza" holatdan boshlanadi
+tugagach yo'q qilinadi.
+
+BOSQICH 1 YANGILANISHI: endi `client` fixture avtomatik ravishda bitta
+test-kompaniyani ro'yxatdan o'tkazadi va JWT tokenni sozlaydi — bu
+productiondagi haqiqiy oqimni aynan takrorlaydi (eski "X-Company-Id"
+header o'rniga endi haqiqiy Authorization: Bearer token ishlatiladi).
 """
 
 import os
@@ -19,6 +21,7 @@ import os
 # qiymat beramiz. Endpointlar baribir pastdagi override orqali test
 # bazasidan foydalanadi, bu qiymat faqat "import xato bermasin" uchun.
 os.environ.setdefault("DATABASE_URL", "sqlite:///./_unused_module_level.db")
+os.environ.setdefault("SECRET_KEY", "test-uchun-maxfiy-kalit")
 
 import pytest
 from sqlalchemy import create_engine
@@ -27,7 +30,6 @@ from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 
 from app.db.session import Base, get_db
-from app.core.tenant import get_current_company_id
 from app.core.rate_limit import limiter
 from app.main import app
 
@@ -39,10 +41,7 @@ TEST_DATABASE_URL = "sqlite:///:memory:"
 def reset_rate_limiter():
     """
     Rate limiter hisoblagichi butun test sessiyasi davomida saqlanib
-    qolmasligi uchun, har bir test OLDIDAN tozalanadi. Aks holda, ko'p
-    test bir xil "IP" (testserver) dan so'rov yuborgani uchun,
-    testlar orasida chegaraga tegib qolish xavfi bo'lardi — bu esa
-    testlarni "tasodifiy" (flaky) qilib qo'yadi.
+    qolmasligi uchun, har bir test OLDIDAN tozalanadi.
     """
     limiter.reset()
     yield
@@ -65,20 +64,29 @@ def db_session():
         Base.metadata.drop_all(bind=engine)
 
 
+def _register(c: TestClient, phone: str, company_name: str) -> dict:
+    """Yordamchi: yangi kompaniya ro'yxatdan o'tkazib, token qaytaradi."""
+    resp = c.post("/auth/register", json={
+        "company_name": company_name,
+        "owner_full_name": "Test Egasi",
+        "phone": phone,
+        "password": "parol123",
+    })
+    assert resp.status_code == 200, f"Ro'yxatdan o'tish muvaffaqiyatsiz: {resp.text}"
+    return resp.json()
+
+
 @pytest.fixture()
 def client(db_session):
     """
     FastAPI test klienti — haqiqiy serverni ishga tushirmasdan,
     to'g'ridan-to'g'ri endpointlarni chaqirish imkonini beradi.
 
-    Faqat `get_db` almashtiriladi (haqiqiy bazaga tegmaslik uchun).
-    `get_current_company_id` esa ATAYLAB almashtirilmaydi — u ishlab
-    chiqarishdagi kabi `X-Company-Id` header'ini o'qiydi (standart: 1).
-    Boshqa "kompaniya" nomidan so'rov yuborish kerak bo'lsa, testda
-    shunchaki boshqa header yuboriladi:
-        client.get("/inventory/products", headers={"X-Company-Id": "2"})
-    Bu productiondagi xatti-harakatni aynan takrorlaydi — testlar
-    "sun'iy" emas, haqiqiy yo'l bilan tekshiradi.
+    Avtomatik ravishda BITTA test-kompaniyani ro'yxatdan o'tkazadi va
+    olingan JWT tokenni standart `Authorization` header sifatida
+    o'rnatadi — shuning uchun boshqa testlarda `client.post(...)`
+    chaqirilganda, u allaqachon "kirgan" holatda bo'ladi (xuddi
+    productionda foydalanuvchi login qilgandan keyingi holat kabi).
     """
 
     def override_get_db():
@@ -90,11 +98,20 @@ def client(db_session):
     app.dependency_overrides[get_db] = override_get_db
 
     with TestClient(app) as c:
+        data = _register(c, phone="+998900000001", company_name="Test Do'kon 1")
+        c.headers.update({"Authorization": f"Bearer {data['access_token']}"})
         yield c
 
     app.dependency_overrides.clear()
 
 
-def as_company(headers_company_id: int) -> dict:
-    """Yordamchi: boshqa kompaniya nomidan so'rov yuborish uchun header tayyorlaydi."""
-    return {"X-Company-Id": str(headers_company_id)}
+def other_company_headers(client: TestClient) -> dict:
+    """
+    Tenant-izolyatsiya testlari uchun: IKKINCHI, boshqa (begona)
+    kompaniyani ro'yxatdan o'tkazadi va uning header'ini qaytaradi.
+    Foydalanish:
+        resp = client.post("/inventory/products", json={...},
+                            headers=other_company_headers(client))
+    """
+    data = _register(client, phone="+998900000002", company_name="Test Do'kon 2")
+    return {"Authorization": f"Bearer {data['access_token']}"}

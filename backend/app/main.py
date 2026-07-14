@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger
 from app.core.error_handlers import register_error_handlers
 from app.core.rate_limit import limiter
+from app.core.security import decode_access_token
 from app.db.session import Base, engine, SessionLocal
 
 # Logging ENG BIRINCHI sozlanadi — shundan keyin import qilinadigan
@@ -35,6 +36,7 @@ from app.modules.finance import models as finance_models  # noqa: F401,E402
 from app.modules.inventory.router import router as inventory_router  # noqa: E402
 from app.modules.sales.router import router as sales_router  # noqa: E402
 from app.modules.finance.router import router as finance_router  # noqa: E402
+from app.modules.auth.router import router as auth_router  # noqa: E402
 
 # Ilova birinchi marta ishga tushganda, kerakli jadvallarni avtomatik yaratadi.
 # (Bosqich 0 dan keyin bu o'rniga Alembic migratsiyalari ishlatiladi.)
@@ -44,14 +46,19 @@ app = FastAPI(
     title=settings.APP_NAME,
     description=(
         "Kichik do'kon, kafe va mehmonxonalar uchun ERP tizimi API'si.\n\n"
-        "**Multi-tenant**: har bir so'rov `X-Company-Id` header'i orqali "
-        "qaysi kompaniyaga tegishli ekanini bildiradi (Bosqich 1'da bu "
-        "login orqali avtomatik aniqlanadi).\n\n"
+        "**Autentifikatsiya**: `/auth/register` yoki `/auth/login` orqali "
+        "token oling, so'ng har bir so'rovda `Authorization: Bearer <token>` "
+        "header'ini yuboring. Qaysi kompaniyaga tegishli ekaningiz token "
+        "ichidan avtomatik aniqlanadi.\n\n"
         "**Xato formati**: barcha xatolar bir xil ko'rinishda qaytadi:\n"
         "`{\"error\": {\"code\": \"...\", \"message\": \"...\"}}`"
     ),
-    version="0.2.0",
+    version="0.3.0",
     openapi_tags=[
+        {
+            "name": "Auth - Kirish",
+            "description": "Ro'yxatdan o'tish va tizimga kirish (JWT token olish).",
+        },
         {
             "name": "WMS - Ombor",
             "description": "Mahsulotlar, ularning qoldig'i va ombor harakatlari (kirim).",
@@ -102,7 +109,7 @@ async def log_requests(request: Request, call_next):
     chiqqanda (masalan bitta mijoz shikoyat qilsa) shu yerdan qidirasiz.
     """
     start = time.perf_counter()
-    company_id = request.headers.get("X-Company-Id", "-")
+    company_id = _extract_company_id_for_logging(request)
 
     response = await call_next(request)
 
@@ -115,10 +122,29 @@ async def log_requests(request: Request, call_next):
     return response
 
 
+def _extract_company_id_for_logging(request: Request) -> str:
+    """
+    Faqat LOGGING uchun — tokenni "eng yaxshi urinish" (best-effort)
+    tarzida ochadi. Agar token bo'lmasa yoki yaroqsiz bo'lsa, baribir
+    so'rovni bloklamaydi (bu ishni haqiqiy autentifikatsiya —
+    `get_current_company_id` — qiladi). Bu funksiya faqat log
+    o'qilishini osonlashtirish uchun.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return "-"
+    try:
+        payload = decode_access_token(auth_header.removeprefix("Bearer ").strip())
+        return str(payload.get("company_id", "-"))
+    except Exception:
+        return "-"
+
+
 # Barcha modullar uchun bir xil xato formati — bitta joyda, bir marta.
 register_error_handlers(app)
 
 # --- Modullarni ulash. Yangi modul qo'shilganda faqat shu yerga bitta qator qo'shiladi. ---
+app.include_router(auth_router)
 app.include_router(inventory_router)
 app.include_router(sales_router)
 app.include_router(finance_router)
@@ -165,16 +191,3 @@ def health():
     if overall_status != "healthy":
         return JSONResponse(status_code=503, content=response_body)
     return response_body
-
-
-# --- Demo uchun boshlang'ich ma'lumot (faqat 1-kompaniya bo'lmasa yaratiladi) ---
-@app.on_event("startup")
-def seed_demo_data():
-    db = SessionLocal()
-    try:
-        if not db.query(auth_models.Company).first():
-            company = auth_models.Company(id=1, name="Namuna Do'kon", business_type="retail")
-            db.add(company)
-            db.commit()
-    finally:
-        db.close()
