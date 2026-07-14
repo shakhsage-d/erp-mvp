@@ -1,84 +1,261 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MikroERP — Boshqaruv paneli</title>
-  <link rel="stylesheet" href="/static/style.css" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MikroERP — Boshqaruv paneli</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <header>
-    <h1>🏪 MikroERP</h1>
-    <span class="subtitle">Demo boshqaruv paneli — Web va Telegram bot bitta bazadan ishlaydi</span>
-  </header>
-
-  <main>
-
-    <!-- MOLIYA XULOSASI -->
-    <section class="card">
-      <h2>💰 Moliya xulosasi</h2>
-      <div class="stats" id="summary-stats">
-        <div class="stat"><span id="stat-income">0</span><label>Umumiy tushum</label></div>
-        <div class="stat"><span id="stat-expense">0</span><label>Umumiy chiqim</label></div>
-        <div class="stat"><span id="stat-profit">0</span><label>Sof foyda</label></div>
-      </div>
-    </section>
-
-    <div class="grid-2">
-      <!-- MAHSULOT QO'SHISH -->
-      <section class="card">
-        <h2>➕ Yangi mahsulot qo'shish</h2>
-        <form id="product-form">
-          <input type="text" id="p-name" placeholder="Mahsulot nomi" required />
-          <input type="number" id="p-price" placeholder="Sotish narxi" min="0" step="0.01" required />
-          <input type="number" id="p-qty" placeholder="Boshlang'ich qoldiq" min="0" step="0.01" value="0" />
-          <button type="submit">Qo'shish</button>
-        </form>
-        <p class="hint">Qo'shilgan mahsulot darhol Telegram botda ham ko'rinadi.</p>
-      </section>
-
-      <!-- TEZKOR SOTISH -->
-      <section class="card">
-        <h2>🧾 Tezkor sotish (chek yopish)</h2>
-        <form id="sale-form">
-          <select id="s-product" required></select>
-          <input type="number" id="s-qty" placeholder="Miqdor" min="0.01" step="0.01" required />
-          <button type="submit">Sotish</button>
-        </form>
-        <p class="hint" id="sale-message"></p>
-      </section>
+<!-- ============ KIRISH / RO'YXATDAN O'TISH ============ -->
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <div class="brand">
+      <span class="brand-mark">MikroERP</span>
+      <span class="brand-tagline">Do'kon, kafe va mehmonxona uchun bitta tizim</span>
     </div>
 
-    <!-- MAHSULOTLAR RO'YXATI -->
-    <section class="card">
-      <h2>📦 Ombordagi mahsulotlar</h2>
-      <table id="products-table">
-        <thead>
-          <tr><th>ID</th><th>Nomi</th><th>Narxi</th><th>Qoldiq</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Kirish</button>
+      <button class="auth-tab" data-tab="register">Ro'yxatdan o'tish</button>
+    </div>
 
-    <!-- TRANZAKSIYALAR -->
-    <section class="card">
-      <h2>📜 So'nggi tranzaksiyalar</h2>
-      <table id="transactions-table">
-        <thead>
-          <tr><th>Turi</th><th>Summa</th><th>Manba</th><th>Vaqti</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
+    <form id="loginForm" class="auth-form">
+      <label>Telefon raqami
+        <input type="text" id="loginPhone" placeholder="+998901234567" required />
+      </label>
+      <label>Parol
+        <input type="password" id="loginPassword" required />
+      </label>
+      <button type="submit" class="btn-primary">Kirish</button>
+      <p class="auth-error" id="loginError"></p>
+    </form>
 
-  </main>
+    <form id="registerForm" class="auth-form hidden">
+      <label>Kompaniya nomi
+        <input type="text" id="regCompanyName" placeholder="Masalan: Aziz Market" required />
+      </label>
+      <label>Biznes turi
+        <select id="regBusinessType">
+          <option value="retail">Chakana savdo (do'kon)</option>
+          <option value="cafe">Kafe / Restoran</option>
+          <option value="hotel">Mehmonxona</option>
+        </select>
+      </label>
+      <label>Sizning ismingiz
+        <input type="text" id="regOwnerName" placeholder="F.I.Sh." required />
+      </label>
+      <label>Telefon raqami
+        <input type="text" id="regPhone" placeholder="+998901234567" required />
+      </label>
+      <label>Parol
+        <input type="password" id="regPassword" minlength="6" required />
+      </label>
+      <button type="submit" class="btn-primary">Ro'yxatdan o'tish</button>
+      <p class="auth-error" id="registerError"></p>
+    </form>
+  </div>
+</div>
 
-  <footer>
-    Bitta backend — Web, Telegram bot va kelajakda mobil ilova shu yerga ulanadi.
-  </footer>
+<!-- ============ ASOSIY ILOVA ============ -->
+<div id="appShell" class="app-shell hidden">
 
-  <script src="config.js"></script>
-  <script src="app.js"></script>
+  <header class="topbar">
+    <div class="topbar-brand">MikroERP</div>
+    <div class="topbar-info">
+      <span id="companyNameLabel" class="company-name"></span>
+      <span id="roleLabel" class="role-badge"></span>
+      <button id="logoutBtn" class="btn-ghost">Chiqish</button>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- "DAFTAR YORLIQLARI" — MODUL TANLAGICH -->
+    <nav class="ledger-tabs" id="ledgerTabs">
+      <button class="ledger-tab active" data-view="sales">🧾 Savdo</button>
+      <button class="ledger-tab" data-view="inventory" data-role-gate="inventory">📦 Ombor</button>
+      <button class="ledger-tab" data-view="finance" data-role-gate="finance">💰 Moliya</button>
+      <button class="ledger-tab" data-view="hrms">🕒 Xodimlar</button>
+      <button class="ledger-tab" data-view="pms" data-role-gate="pms">🏨 Mehmonxona</button>
+    </nav>
+
+    <main class="content">
+
+      <!-- SAVDO -->
+      <section id="view-sales" class="view active">
+        <h2>Tezkor sotish</h2>
+        <div class="card">
+          <div class="pos-row">
+            <select id="saleProductSelect"></select>
+            <input type="number" id="saleQty" min="1" value="1" />
+            <button id="saleAddItemBtn" class="btn-secondary">+ Qo'shish</button>
+          </div>
+          <table class="data-table" id="saleCartTable">
+            <thead><tr><th>Mahsulot</th><th>Miqdor</th><th>Summasi</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="pos-total">
+            Jami: <span id="saleCartTotal" class="mono">0</span> so'm
+          </div>
+          <button id="saleCheckoutBtn" class="btn-primary">Chekni yopish</button>
+          <p class="form-message" id="saleMessage"></p>
+        </div>
+      </section>
+
+      <!-- OMBOR -->
+      <section id="view-inventory" class="view">
+        <h2>Ombor</h2>
+
+        <div class="card">
+          <h3>Yangi mahsulot</h3>
+          <form id="productForm" class="inline-form">
+            <input type="text" id="prodName" placeholder="Nomi" required />
+            <input type="text" id="prodUnit" placeholder="Birligi (dona/kg/l)" value="dona" />
+            <input type="number" id="prodPurchasePrice" placeholder="Tannarx" min="0" />
+            <input type="number" id="prodSalePrice" placeholder="Sotish narxi" min="0" required />
+            <input type="number" id="prodQty" placeholder="Boshlang'ich qoldiq" min="0" value="0" />
+            <button type="submit" class="btn-secondary">Qo'shish</button>
+          </form>
+          <p class="form-message" id="productMessage"></p>
+        </div>
+
+        <div class="card">
+          <h3>Omborga kirim</h3>
+          <form id="stockInForm" class="inline-form">
+            <select id="stockInProductSelect"></select>
+            <input type="number" id="stockInQty" placeholder="Miqdor" min="0.01" step="0.01" required />
+            <input type="text" id="stockInReason" placeholder="Izoh (ixtiyoriy)" />
+            <button type="submit" class="btn-secondary">Kirim qilish</button>
+          </form>
+          <p class="form-message" id="stockInMessage"></p>
+        </div>
+
+        <div class="card">
+          <h3>Mahsulotlar ro'yxati</h3>
+          <table class="data-table" id="productsTable">
+            <thead><tr><th>Nomi</th><th>Birligi</th><th>Tannarx</th><th>Sotish narxi</th><th>Qoldiq</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- MOLIYA -->
+      <section id="view-finance" class="view">
+        <h2>Moliya xulosasi</h2>
+        <div class="stat-row">
+          <div class="stat-card">
+            <span class="stat-label">Umumiy tushum</span>
+            <span class="stat-value mono" id="statIncome">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Umumiy chiqim</span>
+            <span class="stat-value mono" id="statExpense">0</span>
+          </div>
+          <div class="stat-card accent">
+            <span class="stat-label">Sof foyda</span>
+            <span class="stat-value mono" id="statProfit">0</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>So'nggi tranzaksiyalar</h3>
+          <table class="data-table" id="transactionsTable">
+            <thead><tr><th>Turi</th><th>Summasi</th><th>Manbasi</th><th>Vaqti</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- XODIMLAR (HRMS) -->
+      <section id="view-hrms" class="view">
+        <h2>Xodimlar</h2>
+
+        <div class="card">
+          <h3>Mening ish vaqtim</h3>
+          <div class="shift-actions">
+            <button id="clockInBtn" class="btn-secondary">🟢 Ishni boshlash</button>
+            <button id="clockOutBtn" class="btn-secondary">🔴 Ishni tugatish</button>
+          </div>
+          <p class="form-message" id="shiftMessage"></p>
+          <table class="data-table" id="myShiftsTable">
+            <thead><tr><th>Boshlanishi</th><th>Tugashi</th><th>Davomiyligi (soat)</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="card" id="employeesCard" data-role-gate="employees">
+          <h3>Xodim qo'shish</h3>
+          <form id="employeeForm" class="inline-form">
+            <input type="text" id="empName" placeholder="F.I.Sh." required />
+            <input type="text" id="empPhone" placeholder="Telefon raqami" required />
+            <input type="password" id="empPassword" placeholder="Parol" minlength="6" required />
+            <select id="empRole">
+              <option value="cashier">Sotuvchi</option>
+              <option value="storekeeper">Omborchi</option>
+              <option value="receptionist">Resepshin (mehmonxona)</option>
+            </select>
+            <button type="submit" class="btn-secondary">Qo'shish</button>
+          </form>
+          <p class="form-message" id="employeeMessage"></p>
+
+          <h3>Xodimlar ro'yxati</h3>
+          <table class="data-table" id="employeesTable">
+            <thead><tr><th>F.I.Sh.</th><th>Telefon</th><th>Lavozim</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- MEHMONXONA (PMS) -->
+      <section id="view-pms" class="view">
+        <h2>Mehmonxona</h2>
+
+        <div class="card">
+          <h3>Yangi xona</h3>
+          <form id="roomForm" class="inline-form">
+            <input type="text" id="roomNumber" placeholder="Xona raqami" required />
+            <input type="text" id="roomType" placeholder="Turi (standard/lyuks)" value="standard" />
+            <input type="number" id="roomPrice" placeholder="Kechasi narxi" min="0" required />
+            <button type="submit" class="btn-secondary">Qo'shish</button>
+          </form>
+          <p class="form-message" id="roomMessage"></p>
+          <table class="data-table" id="roomsTable">
+            <thead><tr><th>Xona</th><th>Turi</th><th>Narxi/kecha</th><th>Holati</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>Mehmonni joylashtirish</h3>
+          <form id="bookingForm" class="inline-form">
+            <select id="bookingRoomSelect"></select>
+            <input type="text" id="guestName" placeholder="Mehmon F.I.Sh." required />
+            <input type="text" id="guestPhone" placeholder="Telefon (ixtiyoriy)" />
+            <input type="number" id="bookingNights" placeholder="Necha kecha" min="1" value="1" required />
+            <button type="submit" class="btn-secondary">Joylashtirish</button>
+          </form>
+          <p class="form-message" id="bookingMessage"></p>
+        </div>
+
+        <div class="card">
+          <h3>Bronlar</h3>
+          <table class="data-table" id="bookingsTable">
+            <thead><tr><th>Mehmon</th><th>Necha kecha</th><th>Summasi</th><th>Holati</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
