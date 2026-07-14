@@ -54,3 +54,10 @@ class UnauthorizedError(AppError):
     """Login/parol noto'g'ri, yoki token yaroqsiz/muddati tugagan."""
     status_code = 401
     code = "unauthorized"
+
+
+class ForbiddenError(AppError):
+    """Foydalanuvchi autentifikatsiyadan o'tgan, lekin bu amal uchun
+    ruxsati yo'q (masalan sotuvchi moliyaviy hisobotni ko'rmoqchi bo'lsa)."""
+    status_code = 403
+    code = "forbidden"

@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.exceptions import ConflictError, UnauthorizedError
+from app.core.tenant import get_current_company_id, require_roles
 from app.core.logging_config import get_logger
 from app.core.rate_limit import limiter
 from app.modules.auth import models, schemas
@@ -98,3 +99,62 @@ def login(
     return schemas.TokenResponse(
         access_token=token, company_id=user.company_id, company_name=company.name, role=user.role,
     )
+
+
+@router.post(
+    "/users",
+    response_model=schemas.EmployeeOut,
+    summary="Yangi xodim qo'shish (faqat egasi)",
+)
+@limiter.limit("20/minute")
+def create_employee(
+    request: Request,
+    payload: schemas.EmployeeCreateRequest,
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    _: str = Depends(require_roles("owner")),
+):
+    """
+    Do'kon/kafe egasi yangi xodim (sotuvchi yoki omborchi) qo'shadi.
+    Yaratilgan xodim keyin o'z telefon raqami va paroli bilan
+    `/auth/login` orqali kiradi — lekin faqat o'z rolidagi
+    amallarni bajara oladi (masalan sotuvchi moliyaviy hisobotni
+    ko'ra olmaydi).
+    """
+    existing = db.query(models.User).filter(models.User.phone == payload.phone).first()
+    if existing:
+        raise ConflictError("Bu telefon raqami bilan foydalanuvchi allaqachon ro'yxatdan o'tgan")
+
+    user = models.User(
+        company_id=company_id,
+        full_name=payload.full_name,
+        phone=payload.phone,
+        hashed_password=hash_password(payload.password),
+        role=payload.role,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    logger.info(
+        "Yangi xodim qo'shildi: company=%s user_id=%s role=%s",
+        company_id, user.id, user.role,
+    )
+    return user
+
+
+@router.get(
+    "/users",
+    response_model=list[schemas.EmployeeOut],
+    summary="Kompaniya xodimlari ro'yxati (faqat egasi)",
+)
+def list_employees(
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    _: str = Depends(require_roles("owner")),
+):
+    """Shu kompaniyaga tegishli barcha foydalanuvchilar (egasi + xodimlar)."""
+    return db.query(models.User).filter(
+        models.User.company_id == company_id,
+        models.User.deleted_at.is_(None),
+    ).all()

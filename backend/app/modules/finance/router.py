@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.db.session import get_db
-from app.core.tenant import get_current_company_id
+from app.core.tenant import get_current_company_id, require_roles
 from app.modules.finance import models, schemas
 
 router = APIRouter(prefix="/finance", tags=["FMS - Moliya"])
@@ -17,8 +17,13 @@ router = APIRouter(prefix="/finance", tags=["FMS - Moliya"])
 def list_transactions(
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
+    _: str = Depends(require_roles("owner")),
 ):
-    """Barcha pul kirim/chiqimlari tarixi (eng yangisi birinchi) — faqat shu kompaniyaga tegishli."""
+    """
+    Barcha pul kirim/chiqimlari tarixi (eng yangisi birinchi) — faqat
+    shu kompaniyaga tegishli. **Faqat egasi (owner)** ko'ra oladi —
+    sotuvchi yoki omborchi moliyaviy ma'lumotga kira olmaydi.
+    """
     return db.query(models.Transaction).filter(
         models.Transaction.company_id == company_id
     ).order_by(models.Transaction.created_at.desc()).all()
@@ -31,10 +36,11 @@ def list_transactions(
 def summary(
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
+    _: str = Depends(require_roles("owner")),
 ):
     """
-    Umumiy kirim, chiqim va sof foydani qaytaradi. Dashboard'dagi
-    "Moliya xulosasi" bo'limi aynan shu endpointdan ma'lumot oladi.
+    Umumiy kirim, chiqim va sof foydani qaytaradi. **Faqat egasi**
+    ko'ra oladi.
     """
     income = db.query(func.sum(models.Transaction.amount)).filter(
         models.Transaction.company_id == company_id,

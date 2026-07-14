@@ -19,7 +19,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt as pyjwt
 
 from app.core.security import decode_access_token
-from app.core.exceptions import UnauthorizedError
+from app.core.exceptions import UnauthorizedError, ForbiddenError
 
 bearer_scheme = HTTPBearer(
     scheme_name="JWT",
@@ -60,3 +60,30 @@ def get_current_user_role(
     """Kelajakdagi rol-asosidagi ruxsatlar uchun tayyor (masalan faqat
     'owner' HRMS ish haqi ma'lumotini ko'ra olishi kabi)."""
     return payload.get("role", "owner")
+
+
+def require_roles(*allowed_roles: str):
+    """
+    Faqat ko'rsatilgan rollarga ruxsat beruvchi dependency yaratadi.
+    Foydalanish (istalgan routerda):
+
+        @router.get("/summary")
+        def summary(
+            ...,
+            _: str = Depends(require_roles("owner")),
+        ):
+            ...
+
+    Yangi rol yoki yangi qoida kerak bo'lsa, FAQAT chaqirilgan joydagi
+    ro'yxat o'zgaradi — bu funksiyaning o'zi hech qachon o'zgarmaydi.
+    """
+
+    def dependency(role: str = Depends(get_current_user_role)) -> str:
+        if role not in allowed_roles:
+            raise ForbiddenError(
+                f"Bu amal uchun ruxsatingiz yo'q (sizning rolingiz: {role})",
+                extra={"required_roles": list(allowed_roles), "your_role": role},
+            )
+        return role
+
+    return dependency
