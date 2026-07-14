@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Muhit sozlamalari (maxfiy)
+.env
+*/.env
+
+# Ma'lumotlar bazasi fayllari (endi PostgreSQL, lokal test fayllari ham ignor)
+*.db
+*_smoketest.db
+
+# Node / frontend (kelajakda React qo'shilganda)
+node_modules/
+frontend/dist/
+frontend/build/
+
+# IDE
+.vscode/
+.idea/

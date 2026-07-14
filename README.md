@@ -1,98 +1,125 @@
-# MikroERP — Demo (Web + Telegram bot, bitta backend)
+# MikroERP
 
-Bu versiya avvalgi MVP yadrosi ustiga qurilgan: endi **Web dashboard** va
-**Telegram bot** ikkalasi ham bitta FastAPI backendga ulanadi va bitta
-ma'lumotlar bazasidan (`erp_demo.db`) foydalanadi — ya'ni **single source
-of truth**. Webda qilingan savdo botda ham, botdagi savdo webda ham
-darhol ko'rinadi.
+Kichik do'kon, kafe va mehmonxonalar uchun WMS + FMS ERP tizimi. Arxitektura va
+rivojlanish rejasi uchun qarang: [`docs/ERP_Arxitektura_va_Yol_Xaritasi.md`](docs/ERP_Arxitektura_va_Yol_Xaritasi.md)
+
+## Loyihaning tuzilishi
 
 ```
-        ┌──────────────┐
-        │ Web Dashboard │ ──┐
-        └──────────────┘   │
-                            ▼
-                   ┌──────────────────┐        ┌──────────────┐
-                   │  FastAPI backend  │───────▶│  erp_demo.db  │
-                   └──────────────────┘        └──────────────┘
-                            ▲
-        ┌──────────────┐   │
-        │ Telegram bot  │ ──┘
-        └──────────────┘
+erp-system/
+├── backend/     # FastAPI + PostgreSQL — API server
+├── frontend/    # Web dashboard (HTML/CSS/JS, kelajakda React)
+├── bot/         # Telegram bot
+├── mobile/      # Kelajakda: React Native ilova
+└── docs/        # Arxitektura va reja hujjatlari
 ```
 
-## VS Code'da ishga tushirish (2 ta terminal kerak bo'ladi)
+Uchalasi (`backend`, `frontend`, `bot`) — mustaqil, alohida ishga tushiriladigan
+qismlar. Ular faqat backend API orqali gaplashadi. Frontend yoki botga
+o'zgartirish kiritish backendga tegmaydi, va aksincha.
 
-### 0-qadam: Bir martalik sozlash
+## Ishga tushirish (local, 3 ta terminal)
 
-```bash
+### 0-qadam: PostgreSQL baza (Supabase, bepul)
+1. [supabase.com](https://supabase.com) da bepul loyiha oching
+2. Project Settings → Database → Connection string (URI) ni nusxalang
+
+### 1-terminal — Backend
+
+**Windows (PowerShell):**
+```powershell
+cd backend
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+venv\Scripts\Activate.ps1
+```
+Agar `Activate.ps1` xatolik bersa ("running scripts is disabled"), bir marta shuni ishga tushiring:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+```
+so'ng qayta:
+```powershell
+venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+copy .env.example .env
+```
+`.env` faylini oching va `DATABASE_URL`ni Supabase manzilingiz bilan almashtiring, so'ng:
+```powershell
+uvicorn app.main:app --reload
 ```
 
-### 1-terminal — Backend + Web dashboard
-
+**macOS / Linux:**
 ```bash
-uvicorn main:app --reload
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env            # va DATABASE_URL ni Supabase manzilingiz bilan almashtiring
+uvicorn app.main:app --reload
 ```
 
-Brauzerda oching: **http://127.0.0.1:8000** — bu Web dashboard.
-API hujjatlari uchun: **http://127.0.0.1:8000/docs**
+Ochiladi: http://127.0.0.1:8000/docs (API hujjatlari)
 
-### 2-terminal — Telegram bot
+### 2-terminal — Frontend
+Frontend hozircha oddiy statik fayllar — brauzerda to'g'ridan-to'g'ri
+`frontend/index.html` ni oching, YOKI qulayroq bo'lishi uchun:
 
-Avval @BotFather orqali Telegram'da bot yarating va tokenini oling
-(bepul, 1 daqiqa vaqt oladi: Telegram'da @BotFather ga `/newbot` yozing).
+**Windows (PowerShell):**
+```powershell
+cd frontend
+python -m http.server 5500
+```
 
+**macOS / Linux:**
 ```bash
-export TELEGRAM_BOT_TOKEN="bu_yerga_tokeningizni_qo'ying"    # Windows: set TELEGRAM_BOT_TOKEN=...
-python telegram_bot.py
+cd frontend
+python -m http.server 5500
 ```
 
-Botga Telegram'da yozing: `/start`, `/mahsulotlar`, `/hisobot`, `/sotish 1 3`
+Ochiladi: http://127.0.0.1:5500
 
-## Demo skript (jamoaga ko'rsatish uchun)
+`frontend/config.js` dagi `API_BASE` manzili backend qayerda ishlab
+turganini ko'rsatadi — kerak bo'lsa shu yerda o'zgartiring.
 
-1. Webda mahsulot qo'shing (masalan: "Choy", narxi 15000, qoldiq 20)
-2. Telegramda `/mahsulotlar` yozing — mahsulot u yerda ham ko'rinadi
-3. Telegramda `/sotish 1 2` yozing (2 dona sotish)
-4. Webga qayting — bir necha soniyada (avtomatik yangilanish) qoldiq
-   18 taga tushganini va "Moliya xulosasi"da tushum paydo bo'lganini ko'rasiz
-5. Aksincha — webdagi "Tezkor sotish" formasidan sotib, Telegramda
-   `/hisobot` bilan tekshiring
+### 3-terminal — Telegram bot
 
-Bu — aynan "bitta backend, ko'p klient" arxitekturasining jonli isboti.
-
-## Papka tuzilishi
-
+**Windows (PowerShell):**
+```powershell
+cd bot
+python -m venv venv
+venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+copy .env.example .env
 ```
-erp-mvp/
-├── main.py              # Backend kirish nuqtasi + Web dashboard xizmati
-├── telegram_bot.py       # Telegram bot (backendga so'rov yuboradi, mantiqsiz)
-├── database.py            # DB ulanish
-├── models.py               # Jadvallar
-├── schemas.py                # API validatsiyasi
-├── routers/                   # WMS, Savdo, FMS endpointlari
-└── static/                     # Web dashboard (HTML/CSS/JS)
-    ├── index.html
-    ├── style.css
-    └── app.js
+`.env` faylida `TELEGRAM_BOT_TOKEN`ni @BotFather'dan olingan token bilan almashtiring, so'ng:
+```powershell
+python bot.py
 ```
 
-## Keyingi qadam: GitHub'ga o'tish
-
-Demo tayyor bo'lgach, asosiy tizimni GitHub'da boshlashda tavsiya:
-
+**macOS / Linux:**
 ```bash
-git init
-echo "venv/
-__pycache__/
-*.db
-.env" > .gitignore
-git add .
-git commit -m "Initial MVP: WMS + FMS + Web dashboard + Telegram bot"
+cd bot
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env            # va TELEGRAM_BOT_TOKEN ni @BotFather'dan olingan token bilan almashtiring
+python bot.py
 ```
 
-`TELEGRAM_BOT_TOKEN` kabi maxfiy ma'lumotlarni hech qachon kodga yozmang —
-har doim environment variable yoki `.env` fayl orqali bering (va uni
-`.gitignore`ga qo'shing).
+## Baza migratsiyalari (Alembic)
+
+Yangi jadval yoki ustun qo'shganda:
+```bash
+cd backend
+alembic revision --autogenerate -m "tavsif"
+alembic upgrade head
+```
+
+## Muhim arxitektura qoidalari
+
+To'liq tushuntirish: [`docs/ERP_Arxitektura_va_Yol_Xaritasi.md`](docs/ERP_Arxitektura_va_Yol_Xaritasi.md)
+
+Qisqacha:
+- Har bir jadvalda `company_id` bo'lishi SHART (multi-tenancy)
+- Har bir so'rovda `company_id` filtri O'QISHDA HAM, YOZISHDA HAM qo'llanadi — buni
+  `app/core/tenant.py` dagi `get_current_company_id()` orqali qiling, qo'lda emas
+- Har bir yangi modul `app/modules/<nom>/` ichida to'liq (models/schemas/router)
