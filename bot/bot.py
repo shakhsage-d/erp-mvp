@@ -64,6 +64,14 @@ class _HealthHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"Bot ishlab turibdi")
 
+    def do_HEAD(self):
+        # UptimeRobot standart holatda HEAD so'rovi yuboradi (body'siz tekshiruv).
+        # do_HEAD yozilmasa, Python avtomatik 501 Not Implemented qaytaradi —
+        # aynan shu sabab UptimeRobot'da "down" ko'rinishiga olib kelgan edi.
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.end_headers()
+
     def log_message(self, format, *args):
         pass  # konsolni keraksiz log bilan to'ldirmaslik uchun
 
