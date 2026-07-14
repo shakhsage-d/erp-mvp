@@ -10,10 +10,13 @@ import time
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger
 from app.core.error_handlers import register_error_handlers
+from app.core.rate_limit import limiter
 from app.db.session import Base, engine, SessionLocal
 
 # Logging ENG BIRINCHI sozlanadi — shundan keyin import qilinadigan
@@ -48,6 +51,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate limiting — bitta joyda ulanadi, endpointlarda @limiter.limit(...) orqali ishlatiladi
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """Boshqa barcha xatolar bilan bir xil formatda javob beradi."""
+    logger.warning("Rate limit oshib ketdi: %s %s", request.client.host if request.client else "-", request.url.path)
+    return JSONResponse(
+        status_code=429,
+        content={
+            "error": {
+                "code": "rate_limit_exceeded",
+                "message": "Juda ko'p so'rov yuborildi. Birozdan so'ng qayta urinib ko'ring.",
+            }
+        },
+    )
 
 
 @app.middleware("http")

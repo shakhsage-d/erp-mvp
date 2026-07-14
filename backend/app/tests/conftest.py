@@ -28,10 +28,24 @@ from fastapi.testclient import TestClient
 
 from app.db.session import Base, get_db
 from app.core.tenant import get_current_company_id
+from app.core.rate_limit import limiter
 from app.main import app
 
 # Har bir test funksiyasi uchun yangi, bo'sh xotieradagi SQLite baza
 TEST_DATABASE_URL = "sqlite:///:memory:"
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """
+    Rate limiter hisoblagichi butun test sessiyasi davomida saqlanib
+    qolmasligi uchun, har bir test OLDIDAN tozalanadi. Aks holda, ko'p
+    test bir xil "IP" (testserver) dan so'rov yuborgani uchun,
+    testlar orasida chegaraga tegib qolish xavfi bo'lardi — bu esa
+    testlarni "tasodifiy" (flaky) qilib qo'yadi.
+    """
+    limiter.reset()
+    yield
 
 
 @pytest.fixture()

@@ -12,13 +12,14 @@ filtri yo'q edi. Bu boshqa kompaniyaning mahsulotini "sotib", uning
 omborini kamaytirish imkonini berardi. Endi filtr MAJBURIY.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.core.tenant import get_current_company_id
 from app.core.exceptions import NotFoundError, InsufficientStockError, EmptyRequestError
 from app.core.logging_config import get_logger
+from app.core.rate_limit import limiter
 from app.modules.sales import models as sales_models, schemas
 from app.modules.inventory import models as inventory_models
 from app.modules.finance import models as finance_models
@@ -28,7 +29,9 @@ logger = get_logger(__name__)
 
 
 @router.post("/", response_model=schemas.SaleOut)
+@limiter.limit("60/minute")
 def create_sale(
+    request: Request,
     sale_request: schemas.SaleCreate,
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
