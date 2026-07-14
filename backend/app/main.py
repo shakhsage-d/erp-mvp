@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger
@@ -111,8 +112,38 @@ def root():
 
 @app.get("/health")
 def health():
-    """Render/monitoring uchun — server tirikligini tekshirish."""
-    return {"status": "healthy"}
+    """
+    Render/monitoring (masalan UptimeRobot) uchun.
+
+    MUHIM: shunchaki "server jarayoni ishlab turibdimi" emas, balki
+    "server HAQIQIY ISHLAY OLADIMI" (ya'ni bazaga ulana oladimi) ni
+    tekshiradi. Ikkalasi bir xil emas: server jarayoni tirik bo'lishi
+    mumkin, lekin agar baza bilan aloqa uzilgan bo'lsa, u baribir
+    hech qanday so'rovga to'g'ri javob bera olmaydi — bunday holatni
+    "healthy" deb ko'rsatish yolg'on xotirjamlik beradi.
+    """
+    db_status = "ok"
+    overall_status = "healthy"
+
+    try:
+        db = SessionLocal()
+        try:
+            db.execute(text("SELECT 1"))
+        finally:
+            db.close()
+    except Exception as exc:
+        db_status = "unreachable"
+        overall_status = "unhealthy"
+        logger.error("Health check: bazaga ulanib bo'lmadi: %s", exc)
+
+    response_body = {
+        "status": overall_status,
+        "checks": {"database": db_status},
+    }
+
+    if overall_status != "healthy":
+        return JSONResponse(status_code=503, content=response_body)
+    return response_body
 
 
 # --- Demo uchun boshlang'ich ma'lumot (faqat 1-kompaniya bo'lmasa yaratiladi) ---
