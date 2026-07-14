@@ -8,6 +8,6 @@
 // X-Company-Id — hozircha auth yo'q bo'lgani uchun qo'lda yoziladi.
 // Bosqich 1 (login) qo'shilgach, bu qiymat login qilingan foydalanuvchidan olinadi.
 window.APP_CONFIG = {
-  API_BASE: "http://127.0.0.1:8000",
+  API_BASE: "https://erp-mvp-mqlv.onrender.com",
   COMPANY_ID: 1,
 };
