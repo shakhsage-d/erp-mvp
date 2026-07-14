@@ -11,11 +11,12 @@ mahsulotini o'zgartirish imkonini berardi. Endi har bir qidiruvda
 company_id filtri MAJBURIY.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.core.tenant import get_current_company_id
+from app.core.exceptions import NotFoundError
 from app.modules.inventory import models, schemas
 
 router = APIRouter(prefix="/inventory", tags=["WMS - Ombor"])
@@ -59,7 +60,7 @@ def stock_in(
         models.Product.company_id == company_id,  # <-- TUZATILDI: filtr qo'shildi
     ).first()
     if not product:
-        raise HTTPException(status_code=404, detail="Mahsulot topilmadi")
+        raise NotFoundError("Mahsulot topilmadi", extra={"product_id": request.product_id})
 
     product.quantity += request.quantity
 

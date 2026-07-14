@@ -12,11 +12,12 @@ filtri yo'q edi. Bu boshqa kompaniyaning mahsulotini "sotib", uning
 omborini kamaytirish imkonini berardi. Endi filtr MAJBURIY.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.core.tenant import get_current_company_id
+from app.core.exceptions import NotFoundError, InsufficientStockError, EmptyRequestError
 from app.modules.sales import models as sales_models, schemas
 from app.modules.inventory import models as inventory_models
 from app.modules.finance import models as finance_models
@@ -33,7 +34,7 @@ def create_sale(
     """Kassir 'Sotish' tugmasini bosganda shu endpoint chaqiriladi."""
 
     if not sale_request.items:
-        raise HTTPException(status_code=400, detail="Chekda mahsulot yo'q")
+        raise EmptyRequestError("Chekda mahsulot yo'q")
 
     total_amount = 0.0
     sale = sales_models.Sale(company_id=company_id, total_amount=0.0)
@@ -48,14 +49,21 @@ def create_sale(
 
         if not product:
             db.rollback()
-            raise HTTPException(status_code=404, detail=f"Mahsulot topilmadi: id={item.product_id}")
+            raise NotFoundError(
+                f"Mahsulot topilmadi: id={item.product_id}",
+                extra={"product_id": item.product_id},
+            )
 
         if product.quantity < item.quantity:
             db.rollback()
-            raise HTTPException(
-                status_code=400,
-                detail=f"'{product.name}' dan omborda yetarli mahsulot yo'q "
-                       f"(qoldiq: {product.quantity}, so'ralgan: {item.quantity})"
+            raise InsufficientStockError(
+                f"'{product.name}' dan omborda yetarli mahsulot yo'q",
+                extra={
+                    "product_id": product.id,
+                    "product_name": product.name,
+                    "available": product.quantity,
+                    "requested": item.quantity,
+                },
             )
 
         # 1) WMS: qoldiqni kamaytiramiz

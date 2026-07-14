@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.error_handlers import register_error_handlers
 from app.db.session import Base, engine, SessionLocal
 
 # Har bir modulning models.py faylini import qilish shart —
@@ -39,6 +40,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Barcha modullar uchun bir xil xato formati — bitta joyda, bir marta.
+register_error_handlers(app)
 
 # --- Modullarni ulash. Yangi modul qo'shilganda faqat shu yerga bitta qator qo'shiladi. ---
 app.include_router(inventory_router)
