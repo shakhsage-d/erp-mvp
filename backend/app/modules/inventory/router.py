@@ -29,7 +29,7 @@ def create_product(
     company_id: int = Depends(get_current_company_id),
 ):
     """Yangi mahsulot qo'shish."""
-    db_product = models.Product(company_id=company_id, **product.dict())
+    db_product = models.Product(company_id=company_id, **product.model_dump())
     db.add(db_product)
     db.commit()
     db.refresh(db_product)

@@ -34,11 +34,18 @@ def test_insufficient_stock_error_has_structured_details(client):
     assert body["error"]["requested"] == 10
 
 
-def test_empty_sale_request_has_standard_shape(client):
+def test_empty_sale_request_is_rejected_by_schema(client):
+    """
+    MUHIM: `SaleCreate.items`ga Pydantic darajasida `min_length=1` qo'shilgani
+    uchun, bo'sh chek endi validatsiya bosqichida (422) ushlanadi — routerdagi
+    `EmptyRequestError` (400)ga hech qachon yetib bormaydi. Bu — "ma'lumotni
+    iloji boricha erta, eng tashqi qatlamda tekshirish" printsipiga mos:
+    validatsiya qatlami buzilgan so'rovni biznes-mantiqqa yetkazmasdan qaytaradi.
+    """
     resp = client.post("/sales/", json={"items": []})
-    assert resp.status_code == 400
+    assert resp.status_code == 422
     body = resp.json()
-    assert body["error"]["code"] == "empty_request"
+    assert body["error"]["code"] == "validation_error"
 
 
 def test_pydantic_validation_error_has_standard_shape(client):

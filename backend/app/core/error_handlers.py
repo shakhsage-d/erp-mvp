@@ -41,14 +41,32 @@ def register_error_handlers(app: FastAPI) -> None:
     async def validation_error_handler(request: Request, exc: RequestValidationError):
         """Pydantic/FastAPI'ning o'zi ko'targan validatsiya xatolari
         (masalan majburiy maydon yo'qligi, noto'g'ri tur) ham bir xil
-        formatga keltiriladi."""
+        formatga keltiriladi.
+
+        MUHIM NOZIK JOY: agar xato maxsus @field_validator ichida
+        ko'tarilgan bo'lsa (masalan "nomi bo'sh bo'lmasin"), Pydantic v2
+        xato tafsilotiga (`ctx.error`) xom Python `ValueError` obyektini
+        qo'shib qo'yadi — bu JSON'ga aylanmaydi va serverni 500 xatoga
+        olib kelardi. Shuning uchun har bir xato yozuvini "tozalab"
+        (`ctx.error`ni matnga aylantirib) qaytaramiz.
+        """
+        cleaned_errors = []
+        for err in exc.errors():
+            err = dict(err)
+            ctx = err.get("ctx")
+            if ctx and "error" in ctx:
+                ctx = dict(ctx)
+                ctx["error"] = str(ctx["error"])
+                err["ctx"] = ctx
+            cleaned_errors.append(err)
+
         return JSONResponse(
             status_code=422,
             content={
                 "error": {
                     "code": "validation_error",
                     "message": "Yuborilgan ma'lumotlarda xatolik bor",
-                    "fields": exc.errors(),
+                    "fields": cleaned_errors,
                 }
             },
         )
