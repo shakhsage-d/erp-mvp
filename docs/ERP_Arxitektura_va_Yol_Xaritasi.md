@@ -104,13 +104,19 @@ Barcha 8 band bajarildi: xatolik boshqaruvi, validatsiya, logging, testlar (29 t
 - `POST /auth/register`, `POST /auth/login` — JWT token asosida
 - Parollar bcrypt bilan xeshlanadi
 - `get_current_company_id()` endi tokendan o'qiydi (eski `X-Company-Id` header butunlay olib tashlandi)
+- **Dinamik ruxsatlar tizimi**: `Permission`/`Role`/`RolePermission` jadvallari, `require_permission("kod")` — qattiq yozilgan rol nomi emas, bazadagi aniq ruxsatga qarab tekshiradi. Kelajakda "o'z lavozimini yarat" funksiyasi qo'shilganda, faqat yangi CRUD endpoint kerak bo'ladi, tekshiruv mexanizmi o'zgarmaydi.
+- Standart lavozimlar: `owner` (hammasi), `cashier` (`sales.create`), `storekeeper` (`inventory.manage`)
 - **Frontend/bot vaqtincha ishlamay qoladi** — bu ataylab qabul qilingan qaror: backend/core mustahkamligi ustuvor, frontend o'z bosqichida (Bosqich 2) yangilanadi
+
+### Bosqich 3 — HRMS moduli (HOZIRGI FOKUS)
+- `modules/hrms/`: xodimlar smenasi (clock-in/clock-out), ish vaqti tarixi
+- Yangi ruxsatlar (`hrms.view_all` va h.k.) mavjud `Permission` katalogiga qo'shiladi — `core/permissions.py`ga tegilmaydi
+- Bu modul aynan arxitekturaning "sinovi": mavjud modullarga (inventory, sales, finance) tegmasdan qo'shiladimi — shuni tasdiqlaydi
 
 ### Bosqich 2 — Frontend UI/UX (endi bu bosqichga surildi)
 - Professional dizayn, React'ga o'tish (agar kerak bo'lsa)
 - Backend'ga tegilmaydi — API allaqachon tayyor turadi
 
-### Bosqich 3 — HRMS moduli
 ### Bosqich 4 — PMS (mehmonxona) moduli
 ### Bosqich 5 — Rasmiy integratsiyalar (fiskal, Asl Belgisi, IKPU, to'lov tizimlari)
 ### Bosqich 6 — AI qo'shimchalari

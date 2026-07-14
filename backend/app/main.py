@@ -32,11 +32,13 @@ from app.modules.auth import models as auth_models  # noqa: F401,E402
 from app.modules.inventory import models as inventory_models  # noqa: F401,E402
 from app.modules.sales import models as sales_models  # noqa: F401,E402
 from app.modules.finance import models as finance_models  # noqa: F401,E402
+from app.modules.hrms import models as hrms_models  # noqa: F401,E402
 
 from app.modules.inventory.router import router as inventory_router  # noqa: E402
 from app.modules.sales.router import router as sales_router  # noqa: E402
 from app.modules.finance.router import router as finance_router  # noqa: E402
 from app.modules.auth.router import router as auth_router  # noqa: E402
+from app.modules.hrms.router import router as hrms_router  # noqa: E402
 
 # Ilova birinchi marta ishga tushganda, kerakli jadvallarni avtomatik yaratadi.
 # (Bosqich 0 dan keyin bu o'rniga Alembic migratsiyalari ishlatiladi.)
@@ -70,6 +72,10 @@ app = FastAPI(
         {
             "name": "FMS - Moliya",
             "description": "Kirim/chiqim tarixi va moliyaviy xulosa hisobotlari.",
+        },
+        {
+            "name": "HRMS - Xodimlar",
+            "description": "Xodimlar smenasi (ish boshlash/tugatish) va ish vaqti tarixi.",
         },
     ],
 )
@@ -148,7 +154,7 @@ app.include_router(auth_router)
 app.include_router(inventory_router)
 app.include_router(sales_router)
 app.include_router(finance_router)
-# app.include_router(hrms_router)   # Bosqich 3 da ochiladi
+app.include_router(hrms_router)
 # app.include_router(pms_router)    # Bosqich 4 da ochiladi
 
 

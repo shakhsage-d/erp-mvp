@@ -25,6 +25,7 @@ PERMISSION_CATALOG = {
     "sales.create": "Sotuv (chek) amalga oshirish",
     "finance.view": "Moliyaviy hisobot va tranzaksiyalarni ko'rish",
     "employees.manage": "Xodim qo'shish va ro'yxatini ko'rish",
+    "hrms.view_all": "Barcha xodimlarning ish vaqti (smena) tarixini ko'rish",
 }
 
 # --- Standart lavozimlar va ularning ruxsatlari ---

@@ -51,3 +51,14 @@ def get_current_company_id(
     if company_id is None:
         raise UnauthorizedError("Tokenda company_id topilmadi")
     return int(company_id)
+
+
+def get_current_user_id(
+    payload: dict = Depends(get_current_token_payload),
+) -> int:
+    """Joriy so'rovni yuborayotgan foydalanuvchining o'z ID'si (masalan
+    HRMS'da 'o'zining smenasini boshlash/tugatish' kabi holatlar uchun)."""
+    user_id = payload.get("sub")
+    if user_id is None:
+        raise UnauthorizedError("Tokenda foydalanuvchi ID'si topilmadi")
+    return int(user_id)
