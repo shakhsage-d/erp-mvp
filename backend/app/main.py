@@ -6,23 +6,31 @@ Ishga tushirish (backend/ papkasidan turib):
     uvicorn app.main:app --reload
 """
 
-from fastapi import FastAPI
+import time
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.logging_config import setup_logging, get_logger
 from app.core.error_handlers import register_error_handlers
 from app.db.session import Base, engine, SessionLocal
 
+# Logging ENG BIRINCHI sozlanadi — shundan keyin import qilinadigan
+# hech qanday modul logsiz qolmaydi.
+setup_logging()
+logger = get_logger(__name__)
+
 # Har bir modulning models.py faylini import qilish shart —
 # shunda SQLAlchemy ularning jadval borligini biladi.
-from app.modules.auth import models as auth_models  # noqa: F401
-from app.modules.inventory import models as inventory_models  # noqa: F401
-from app.modules.sales import models as sales_models  # noqa: F401
-from app.modules.finance import models as finance_models  # noqa: F401
+from app.modules.auth import models as auth_models  # noqa: F401,E402
+from app.modules.inventory import models as inventory_models  # noqa: F401,E402
+from app.modules.sales import models as sales_models  # noqa: F401,E402
+from app.modules.finance import models as finance_models  # noqa: F401,E402
 
-from app.modules.inventory.router import router as inventory_router
-from app.modules.sales.router import router as sales_router
-from app.modules.finance.router import router as finance_router
+from app.modules.inventory.router import router as inventory_router  # noqa: E402
+from app.modules.sales.router import router as sales_router  # noqa: E402
+from app.modules.finance.router import router as finance_router  # noqa: E402
 
 # Ilova birinchi marta ishga tushganda, kerakli jadvallarni avtomatik yaratadi.
 # (Bosqich 0 dan keyin bu o'rniga Alembic migratsiyalari ishlatiladi.)
@@ -40,6 +48,29 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """
+    Har bir HTTP so'rovini bitta qatorda jurnalga yozadi:
+    qaysi kompaniya, qaysi endpoint, qancha vaqtda, qaysi natija bilan.
+    Render'ning "Logs" bo'limida aynan shu qatorlar ko'rinadi — muammo
+    chiqqanda (masalan bitta mijoz shikoyat qilsa) shu yerdan qidirasiz.
+    """
+    start = time.perf_counter()
+    company_id = request.headers.get("X-Company-Id", "-")
+
+    response = await call_next(request)
+
+    duration_ms = (time.perf_counter() - start) * 1000
+    logger.info(
+        "company=%s %s %s -> %s (%.1fms)",
+        company_id, request.method, request.url.path,
+        response.status_code, duration_ms,
+    )
+    return response
+
 
 # Barcha modullar uchun bir xil xato formati — bitta joyda, bir marta.
 register_error_handlers(app)

@@ -17,9 +17,11 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.tenant import get_current_company_id
 from app.core.exceptions import NotFoundError
+from app.core.logging_config import get_logger
 from app.modules.inventory import models, schemas
 
 router = APIRouter(prefix="/inventory", tags=["WMS - Ombor"])
+logger = get_logger(__name__)
 
 
 @router.post("/products", response_model=schemas.ProductOut)
@@ -33,6 +35,7 @@ def create_product(
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
+    logger.info("Mahsulot qo'shildi: company=%s id=%s name=%s", company_id, db_product.id, db_product.name)
     return db_product
 
 
@@ -73,6 +76,11 @@ def stock_in(
     )
     db.add(movement)
     db.commit()
+
+    logger.info(
+        "Ombor kirimi: company=%s product_id=%s (+%s) yangi_qoldiq=%s",
+        company_id, product.id, request.quantity, product.quantity,
+    )
 
     return {
         "message": f"{product.name} uchun {request.quantity} {product.unit} kirim qilindi",

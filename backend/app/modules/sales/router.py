@@ -18,11 +18,13 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.tenant import get_current_company_id
 from app.core.exceptions import NotFoundError, InsufficientStockError, EmptyRequestError
+from app.core.logging_config import get_logger
 from app.modules.sales import models as sales_models, schemas
 from app.modules.inventory import models as inventory_models
 from app.modules.finance import models as finance_models
 
 router = APIRouter(prefix="/sales", tags=["Savdo (WMS + FMS integratsiyasi)"])
+logger = get_logger(__name__)
 
 
 @router.post("/", response_model=schemas.SaleOut)
@@ -49,6 +51,10 @@ def create_sale(
 
         if not product:
             db.rollback()
+            logger.warning(
+                "Sotuv rad etildi (mahsulot topilmadi): company=%s product_id=%s",
+                company_id, item.product_id,
+            )
             raise NotFoundError(
                 f"Mahsulot topilmadi: id={item.product_id}",
                 extra={"product_id": item.product_id},
@@ -56,6 +62,11 @@ def create_sale(
 
         if product.quantity < item.quantity:
             db.rollback()
+            logger.warning(
+                "Sotuv rad etildi (omborda yetarli emas): company=%s product_id=%s "
+                "mavjud=%s so'ralgan=%s",
+                company_id, product.id, product.quantity, item.quantity,
+            )
             raise InsufficientStockError(
                 f"'{product.name}' dan omborda yetarli mahsulot yo'q",
                 extra={
@@ -99,4 +110,8 @@ def create_sale(
 
     db.commit()
     db.refresh(sale)
+    logger.info(
+        "Sotuv yakunlandi: company=%s sale_id=%s summa=%s",
+        company_id, sale.id, sale.total_amount,
+    )
     return sale
