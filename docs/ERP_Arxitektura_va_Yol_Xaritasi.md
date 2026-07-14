@@ -87,42 +87,42 @@ Muhim: kod bir xil, faqat `.env`dagi ulanish manzillari farq qiladi. Hech qachon
 
 ## 6. Rivojlanish bosqichlari (Roadmap)
 
-### Bosqich 0 — Poydevor (hozir, 2-3 hafta)
-- Repo'ni yuqoridagi tuzilishga ko'chirish
-- SQLite → PostgreSQL (Supabase)
-- Barcha jadvallarga `company_id` to'liq va izchil qo'yish (yozishda ham, o'qishda ham)
-- Markaziy `get_current_company_id()` dependency
-- Alembic sozlash
-- **Natija:** kod tartibli, xavfsiz, kengaytirishga tayyor — lekin funksional jihatdan hozirgi demo bilan bir xil
+> **2026-yil iyul holatiga yangilandi:** Bosqich 0 muvaffaqiyatli yakunlandi (backend, frontend, bot — barchasi bulutda ishlayapti, bir-biri bilan ulangan). Strategik qaror: Telegram bot **vaqtincha to'xtatildi** (kod va modul saqlanadi, kelajakda bildirishnoma/hisobot xizmati sifatida qayta faollashtiriladi). Frontend UI/UX ham vaqtincha orqa planda qoladi. Asosiy e'tibor endi **backend va core arxitekturani mustahkamlashga** qaratiladi — bu keyingi barcha modullar (HRMS, PMS, AI) va yuklama o'sishi uchun poydevor bo'ladi.
 
-### Bosqich 1 — Haqiqiy autentifikatsiya (3-4 hafta)
+### Bosqich 0 — Poydevor ✅ YAKUNLANDI
+- Repo modulli tuzilishga ko'chirildi
+- PostgreSQL (Supabase) ulandi
+- `company_id` filtrlari to'g'rilandi (yozishda ham, o'qishda ham)
+- Markaziy `get_current_company_id()` dependency
+- Alembic sozlandi
+- Backend, frontend, bot — barchasi Render'da bulutda ishga tushirildi
+
+### Bosqich 0.5 — Backend/Core mustahkamlash (HOZIRGI FOKUS)
+Bu bosqichning maqsadi — tizim qancha modul va yuklama qo'shilishidan qat'iy nazar, buzilmaydigan, bashorat qilinadigan tarzda ishlashi. Aniq vazifalar:
+
+1. **Xatoliklarni birxil boshqarish (error handling)** — har bir modulda xato alohida-alohida ushlanmaydi, markaziy `exception_handler` orqali barcha xatolar bir xil formatda (`{"detail": "...", "code": "..."}`) qaytariladi.
+2. **Kirish ma'lumotlarini qattiq tekshirish (validation)** — Pydantic sxemalarida chegaralar (`min`, `max`, manfiy son bo'lmasligi va h.k.) to'liq belgilanadi — hozircha ko'p joyda "ishonib" qabul qilinmoqda.
+3. **Logging** — har bir muhim amal (kirim, sotuv, xato) tuzilgan log (structured logging) sifatida yoziladi, Render loglarida qidirish oson bo'lishi uchun.
+4. **Avtomatik testlar** — har bir modul uchun kamida asosiy stsenariylar (mahsulot qo'shish, sotish, ombor yetarli emasligi holati) `pytest` bilan yopiladi. Bu — keyingi o'zgarishlarda "eskisini buzmadimmi" degan savolga tezkor javob beradi.
+5. **Rate limiting va asosiy xavfsizlik** — bitta IP/foydalanuvchidan haddan tashqari ko'p so'rovlarning oldini olish (kelajakda ko'p mijoz bo'lganda muhim).
+6. **Health/readiness endpointlari kengaytiriladi** — `/health` endi shunchaki "ok" emas, balki bazaga ulanish holatini ham tekshiradi.
+7. **Backup strategiyasi** — Supabase avtomatik backup sozlamalarini yoqish va tekshirish.
+8. **API hujjatlari** — FastAPI avtomatik yaratadigan `/docs` sahifasi to'liq va tushunarli bo'lishi uchun har bir endpoint'ga tavsif (`description`) qo'shiladi.
+
+### Bosqich 1 — Haqiqiy autentifikatsiya
 - `auth` moduli: Company ro'yxatdan o'tishi, User login (JWT)
 - `get_current_company_id()` endi haqiqiy foydalanuvchidan olinadi
 - Rollar: egasi / sotuvchi / omborchi
-- **Natija:** endi haqiqatan ham ko'p kompaniya bir tizimda, bir-biridan xavfsiz ajratilgan holda ishlashi mumkin — bu birinchi haqiqiy "multi-tenant SaaS" bosqichi
 
-### Bosqich 2 — Pilot mijozlar bilan mustahkamlash (4-6 hafta)
-- Do'stingizning do'konlarida real foydalanish
-- Ombor ogohlantirishlari (tugab qolish haqida)
-- Bir nechta filial/nuqta qo'llab-quvvatlash
-- Metrikalar yig'ish (kunlik faollik, xatolar)
+### Bosqich 2 — Frontend UI/UX (endi bu bosqichga surildi)
+- Professional dizayn, React'ga o'tish (agar kerak bo'lsa)
+- Backend'ga tegilmaydi — API allaqachon tayyor turadi
 
-### Bosqich 3 — HRMS moduli (6-8 hafta)
-- `modules/hrms/`: xodimlar, smena, ish haqi
-- Ombor/savdo modullariga tegmasdan qo'shiladi — bu bosqich aynan arxitekturaning "sinovi"
-
+### Bosqich 3 — HRMS moduli
 ### Bosqich 4 — PMS (mehmonxona) moduli
-- Xona bron qilish, mehmon hisobi — alohida modul sifatida
-
-### Bosqich 5 — Rasmiy integratsiyalar
-- Fiskal kassa/OFD, Asl Belgisi, IKPU, Click/Payme
-- Faqat shu bosqichda kerak — pullik mijozlar paydo bo'lganda
-
+### Bosqich 5 — Rasmiy integratsiyalar (fiskal, Asl Belgisi, IKPU, to'lov tizimlari)
 ### Bosqich 6 — AI qo'shimchalari
-- Chek/faktura OCR, sotuv bashorati, anomaliya aniqlash
-
-### Bosqich 7 — Mobil ilova
-- `mobile/` — React Native, mavjud API'dan foydalanadi, backend o'zgarmaydi
+### Bosqich 7 — Telegram bot qayta faollashtiriladi (bildirishnoma/hisobot xizmati sifatida) + mobil ilova
 
 ---
 
