@@ -28,7 +28,11 @@ router = APIRouter(prefix="/sales", tags=["Savdo (WMS + FMS integratsiyasi)"])
 logger = get_logger(__name__)
 
 
-@router.post("/", response_model=schemas.SaleOut)
+@router.post(
+    "/",
+    response_model=schemas.SaleOut,
+    summary="Chek yopish (sotuv)",
+)
 @limiter.limit("60/minute")
 def create_sale(
     request: Request,
@@ -36,7 +40,19 @@ def create_sale(
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
 ):
-    """Kassir 'Sotish' tugmasini bosganda shu endpoint chaqiriladi."""
+    """
+    Kassir "Sotish" tugmasini bosganda chaqiriladigan asosiy endpoint.
+
+    Bitta chaqiruvda uchta amal ATOM tarzda (hammasi yoki hech narsa)
+    bajariladi:
+    1. **WMS**: har bir sotilgan mahsulot uchun ombor qoldig'i kamayadi
+    2. **FMS**: chek summasi bo'yicha moliyaga avtomatik kirim yoziladi
+    3. Chekning o'zi (`sales` + `sale_items`) saqlanadi
+
+    Agar ro'yxatdagi biror mahsulot topilmasa yoki omborda yetarli
+    miqdor bo'lmasa, **butun chek bekor qilinadi** — yarim bajarilgan
+    sotuv hech qachon qolmaydi.
+    """
 
     if not sale_request.items:
         raise EmptyRequestError("Chekda mahsulot yo'q")

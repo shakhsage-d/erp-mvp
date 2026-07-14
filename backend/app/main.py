@@ -42,8 +42,29 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Kichik biznes egalari uchun ERP (WMS + FMS + ...) ",
+    description=(
+        "Kichik do'kon, kafe va mehmonxonalar uchun ERP tizimi API'si.\n\n"
+        "**Multi-tenant**: har bir so'rov `X-Company-Id` header'i orqali "
+        "qaysi kompaniyaga tegishli ekanini bildiradi (Bosqich 1'da bu "
+        "login orqali avtomatik aniqlanadi).\n\n"
+        "**Xato formati**: barcha xatolar bir xil ko'rinishda qaytadi:\n"
+        "`{\"error\": {\"code\": \"...\", \"message\": \"...\"}}`"
+    ),
     version="0.2.0",
+    openapi_tags=[
+        {
+            "name": "WMS - Ombor",
+            "description": "Mahsulotlar, ularning qoldig'i va ombor harakatlari (kirim).",
+        },
+        {
+            "name": "Savdo (WMS + FMS integratsiyasi)",
+            "description": "Chek yopish — bitta amalda ombor va moliyani birga yangilaydi.",
+        },
+        {
+            "name": "FMS - Moliya",
+            "description": "Kirim/chiqim tarixi va moliyaviy xulosa hisobotlari.",
+        },
+    ],
 )
 
 app.add_middleware(

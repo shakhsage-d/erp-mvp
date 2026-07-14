@@ -25,7 +25,11 @@ router = APIRouter(prefix="/inventory", tags=["WMS - Ombor"])
 logger = get_logger(__name__)
 
 
-@router.post("/products", response_model=schemas.ProductOut)
+@router.post(
+    "/products",
+    response_model=schemas.ProductOut,
+    summary="Yangi mahsulot qo'shish",
+)
 @limiter.limit("30/minute")
 def create_product(
     request: Request,
@@ -33,7 +37,15 @@ def create_product(
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
 ):
-    """Yangi mahsulot qo'shish."""
+    """
+    Yangi mahsulotni ombor katalogiga qo'shadi.
+
+    - Boshlang'ich `quantity` (0 dan katta) bilan ham qo'shish mumkin,
+      yoki `0` bilan qo'shib, keyin `/inventory/stock-in` orqali
+      kirim qilish mumkin.
+    - `name` bo'sh yoki faqat bo'shliqlardan iborat bo'lishi mumkin emas.
+    - Narxlar va miqdor manfiy bo'lishi mumkin emas.
+    """
     db_product = models.Product(company_id=company_id, **product.model_dump())
     db.add(db_product)
     db.commit()
@@ -42,19 +54,26 @@ def create_product(
     return db_product
 
 
-@router.get("/products", response_model=list[schemas.ProductOut])
+@router.get(
+    "/products",
+    response_model=list[schemas.ProductOut],
+    summary="Mahsulotlar ro'yxati va qoldig'i",
+)
 def list_products(
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
 ):
-    """Faqat shu kompaniyaga tegishli mahsulotlar va ularning qoldig'i."""
+    """Faqat shu kompaniyaga (`X-Company-Id`) tegishli mahsulotlar va ularning qoldig'i."""
     return db.query(models.Product).filter(
         models.Product.company_id == company_id,
         models.Product.deleted_at.is_(None),
     ).all()
 
 
-@router.post("/stock-in")
+@router.post(
+    "/stock-in",
+    summary="Omborga tovar kirim qilish",
+)
 @limiter.limit("60/minute")
 def stock_in(
     request: Request,
@@ -62,7 +81,13 @@ def stock_in(
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
 ):
-    """Omborga yangi tovar kirim qilish."""
+    """
+    Mavjud mahsulotga yetkazib berilgan tovarni ombor qoldig'iga qo'shadi.
+
+    Har bir kirim `stock_movements` jadvaliga tarix sifatida ham yoziladi
+    (audit uchun) — bu orqali "qachon, qancha kirim bo'lgan" tarixini
+    keyinchalik ko'rish mumkin bo'ladi.
+    """
     product = db.query(models.Product).filter(
         models.Product.id == stock_request.product_id,
         models.Product.company_id == company_id,  # <-- TUZATILDI: filtr qo'shildi
