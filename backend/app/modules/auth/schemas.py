@@ -32,7 +32,7 @@ class EmployeeCreateRequest(BaseModel):
     # Hozircha faqat standart 2 ta lavozim tanlanadi. Kelajakda (HRMS
     # bosqichida) bu maydon kompaniyaning o'z maxsus lavozimlaridan
     # birini ham qabul qiladigan bo'ladi (masalan role_id orqali).
-    role: Literal["cashier", "storekeeper"]
+    role: Literal["cashier", "storekeeper", "receptionist"]
 
 
 class EmployeeOut(BaseModel):

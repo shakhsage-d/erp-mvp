@@ -26,6 +26,7 @@ PERMISSION_CATALOG = {
     "finance.view": "Moliyaviy hisobot va tranzaksiyalarni ko'rish",
     "employees.manage": "Xodim qo'shish va ro'yxatini ko'rish",
     "hrms.view_all": "Barcha xodimlarning ish vaqti (smena) tarixini ko'rish",
+    "pms.manage": "Mehmonxona xonalari va bronlarni boshqarish",
 }
 
 # --- Standart lavozimlar va ularning ruxsatlari ---
@@ -33,6 +34,7 @@ DEFAULT_ROLE_PERMISSIONS = {
     "owner": list(PERMISSION_CATALOG.keys()),  # egasi — hammasi
     "cashier": ["sales.create"],
     "storekeeper": ["inventory.manage"],
+    "receptionist": ["pms.manage"],  # mehmonxona resepshin xodimi
 }
 
 

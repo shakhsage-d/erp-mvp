@@ -108,10 +108,16 @@ Barcha 8 band bajarildi: xatolik boshqaruvi, validatsiya, logging, testlar (29 t
 - Standart lavozimlar: `owner` (hammasi), `cashier` (`sales.create`), `storekeeper` (`inventory.manage`)
 - **Frontend/bot vaqtincha ishlamay qoladi** — bu ataylab qabul qilingan qaror: backend/core mustahkamligi ustuvor, frontend o'z bosqichida (Bosqich 2) yangilanadi
 
-### Bosqich 3 — HRMS moduli (HOZIRGI FOKUS)
+### Bosqich 3 — HRMS moduli ✅ YAKUNLANDI
 - `modules/hrms/`: xodimlar smenasi (clock-in/clock-out), ish vaqti tarixi
-- Yangi ruxsatlar (`hrms.view_all` va h.k.) mavjud `Permission` katalogiga qo'shiladi — `core/permissions.py`ga tegilmaydi
-- Bu modul aynan arxitekturaning "sinovi": mavjud modullarga (inventory, sales, finance) tegmasdan qo'shiladimi — shuni tasdiqlaydi
+- Yangi ruxsat: `hrms.view_all`
+- Boshqa hech qanday modulga tegilmadi — arxitekturaning "sinovi" muvaffaqiyatli o'tdi
+
+### Bosqich 4 — PMS (mehmonxona) moduli ✅ YAKUNLANDI
+- `modules/pms/`: xonalar, bronlar, checkout
+- **Chuqur integratsiya**: checkout bitta amalda bron yopadi, xonani bo'shatadi VA FMS'ga avtomatik kirim yozadi (xuddi `sales` moduli inventory+finance'ni bog'laganidek)
+- Yangi lavozim: `receptionist` (`pms.manage` ruxsati bilan)
+- 52 ta test — barchasi o'tdi
 
 ### Bosqich 2 — Frontend UI/UX (endi bu bosqichga surildi)
 - Professional dizayn, React'ga o'tish (agar kerak bo'lsa)
