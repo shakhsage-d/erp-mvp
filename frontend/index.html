@@ -6,7 +6,7 @@
 <title>Ustun — Boshqaruv paneli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -16,7 +16,7 @@
   <div class="auth-card">
     <div class="brand">
       <span class="brand-mark">Ustun</span>
-      <span class="brand-tagline">Do'kon, kafe va mehmonxona uchun bitta tizim</span>
+      <span class="brand-tagline">Do'kon, kafe va mehmonxona uchun bitta ishonchli tayanch</span>
     </div>
 
     <div class="auth-tabs">
@@ -58,6 +58,7 @@
       <button type="submit" class="btn-primary">Ro'yxatdan o'tish</button>
       <p class="auth-error" id="registerError"></p>
     </form>
+    <div style="height:26px"></div>
   </div>
 </div>
 
@@ -72,6 +73,7 @@
       <button id="logoutBtn" class="btn-ghost">Chiqish</button>
     </div>
   </header>
+  <div class="girih-divider"></div>
 
   <div class="layout">
 
@@ -88,7 +90,7 @@
 
       <!-- SAVDO -->
       <section id="view-sales" class="view active">
-        <h2>Tezkor sotish</h2>
+        <div class="view-header"><h2>Tezkor sotish</h2></div>
         <div class="card">
           <div class="pos-row">
             <select id="saleProductSelect"></select>
@@ -103,50 +105,40 @@
             Jami: <span id="saleCartTotal" class="mono">0</span> so'm
           </div>
           <button id="saleCheckoutBtn" class="btn-primary">Chekni yopish</button>
-          <p class="form-message" id="saleMessage"></p>
         </div>
       </section>
 
       <!-- OMBOR -->
       <section id="view-inventory" class="view">
-        <h2>Ombor</h2>
-
-        <div class="card">
-          <h3>Yangi mahsulot</h3>
-          <form id="productForm" class="inline-form">
-            <input type="text" id="prodName" placeholder="Nomi" required />
-            <input type="text" id="prodUnit" placeholder="Birligi (dona/kg/l)" value="dona" />
-            <input type="number" id="prodPurchasePrice" placeholder="Tannarx" min="0" />
-            <input type="number" id="prodSalePrice" placeholder="Sotish narxi" min="0" required />
-            <input type="number" id="prodQty" placeholder="Boshlang'ich qoldiq" min="0" value="0" />
-            <button type="submit" class="btn-secondary">Qo'shish</button>
-          </form>
-          <p class="form-message" id="productMessage"></p>
+        <div class="view-header">
+          <h2>Ombor</h2>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-icon" id="openStockInModalBtn" title="Omborga kirim">↧</button>
+            <button class="btn-icon" id="openProductModalBtn" title="Yangi mahsulot">+</button>
+          </div>
         </div>
 
         <div class="card">
-          <h3>Omborga kirim</h3>
-          <form id="stockInForm" class="inline-form">
-            <select id="stockInProductSelect"></select>
-            <input type="number" id="stockInQty" placeholder="Miqdor" min="0.01" step="0.01" required />
-            <input type="text" id="stockInReason" placeholder="Izoh (ixtiyoriy)" />
-            <button type="submit" class="btn-secondary">Kirim qilish</button>
-          </form>
-          <p class="form-message" id="stockInMessage"></p>
-        </div>
-
-        <div class="card">
-          <h3>Mahsulotlar ro'yxati</h3>
+          <div class="search-bar">
+            <span class="search-icon">🔎</span>
+            <input type="text" id="productSearchInput" placeholder="Mahsulot nomi bo'yicha qidirish..." />
+          </div>
           <table class="data-table" id="productsTable">
             <thead><tr><th>Nomi</th><th>Birligi</th><th>Tannarx</th><th>Sotish narxi</th><th>Qoldiq</th></tr></thead>
             <tbody></tbody>
           </table>
+          <div id="productsEmptyState" class="empty-state hidden">
+            <div class="empty-icon">📦</div>
+            <div class="empty-title">Hali mahsulot yo'q</div>
+            <div class="empty-hint">Yuqoridagi "+" tugmasi orqali birinchi mahsulotingizni qo'shing</div>
+          </div>
+          <div class="pagination" id="productsPagination"></div>
         </div>
       </section>
 
       <!-- MOLIYA -->
       <section id="view-finance" class="view">
-        <h2>Moliya xulosasi</h2>
+        <div class="view-header"><h2>Moliya xulosasi</h2></div>
         <div class="stat-row">
           <div class="stat-card">
             <span class="stat-label">Umumiy tushum</span>
@@ -163,17 +155,34 @@
         </div>
 
         <div class="card">
+          <h3>So'nggi 14 kunlik savdo dinamikasi</h3>
+          <div class="chart-wrap">
+            <div class="mini-bars" id="dailySalesChart"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Eng ko'p daromad keltirgan mahsulotlar</h3>
+          <ul class="top-products-list" id="topProductsList"></ul>
+        </div>
+
+        <div class="card">
+          <div class="search-bar">
+            <span class="search-icon">🔎</span>
+            <input type="text" id="transactionSearchInput" placeholder="Manba bo'yicha qidirish (masalan Sale)..." />
+          </div>
           <h3>So'nggi tranzaksiyalar</h3>
           <table class="data-table" id="transactionsTable">
             <thead><tr><th>Turi</th><th>Summasi</th><th>Manbasi</th><th>Vaqti</th></tr></thead>
             <tbody></tbody>
           </table>
+          <div class="pagination" id="transactionsPagination"></div>
         </div>
       </section>
 
       <!-- XODIMLAR (HRMS) -->
       <section id="view-hrms" class="view">
-        <h2>Xodimlar</h2>
+        <div class="view-header"><h2>Xodimlar</h2></div>
 
         <div class="card">
           <h3>Mening ish vaqtim</h3>
@@ -181,7 +190,6 @@
             <button id="clockInBtn" class="btn-secondary">🟢 Ishni boshlash</button>
             <button id="clockOutBtn" class="btn-secondary">🔴 Ishni tugatish</button>
           </div>
-          <p class="form-message" id="shiftMessage"></p>
           <table class="data-table" id="myShiftsTable">
             <thead><tr><th>Boshlanishi</th><th>Tugashi</th><th>Davomiyligi (soat)</th></tr></thead>
             <tbody></tbody>
@@ -189,21 +197,10 @@
         </div>
 
         <div class="card" id="employeesCard" data-role-gate="employees">
-          <h3>Xodim qo'shish</h3>
-          <form id="employeeForm" class="inline-form">
-            <input type="text" id="empName" placeholder="F.I.Sh." required />
-            <input type="text" id="empPhone" placeholder="Telefon raqami" required />
-            <input type="password" id="empPassword" placeholder="Parol" minlength="6" required />
-            <select id="empRole">
-              <option value="cashier">Sotuvchi</option>
-              <option value="storekeeper">Omborchi</option>
-              <option value="receptionist">Resepshin (mehmonxona)</option>
-            </select>
-            <button type="submit" class="btn-secondary">Qo'shish</button>
-          </form>
-          <p class="form-message" id="employeeMessage"></p>
-
-          <h3>Xodimlar ro'yxati</h3>
+          <div class="card-header">
+            <h3>Xodimlar</h3>
+            <button class="btn-icon" id="openEmployeeModalBtn" title="Xodim qo'shish">+</button>
+          </div>
           <table class="data-table" id="employeesTable">
             <thead><tr><th>F.I.Sh.</th><th>Telefon</th><th>Lavozim</th><th>Holati</th><th></th></tr></thead>
             <tbody></tbody>
@@ -213,17 +210,23 @@
 
       <!-- MEHMONXONA (PMS) -->
       <section id="view-pms" class="view">
-        <h2>Mehmonxona</h2>
+        <div class="view-header"><h2>Mehmonxona</h2></div>
 
         <div class="card">
-          <h3>Yangi xona</h3>
-          <form id="roomForm" class="inline-form">
-            <input type="text" id="roomNumber" placeholder="Xona raqami" required />
-            <input type="text" id="roomType" placeholder="Turi (standard/lyuks)" value="standard" />
-            <input type="number" id="roomPrice" placeholder="Kechasi narxi" min="0" required />
-            <button type="submit" class="btn-secondary">Qo'shish</button>
-          </form>
-          <p class="form-message" id="roomMessage"></p>
+          <div class="gauge-wrap">
+            <span class="gauge-number mono" id="occupancyRate">0%</span>
+            <div>
+              <div style="font-weight:600;">To'lilik darajasi</div>
+              <div style="font-size:0.85rem; color:var(--ink-soft);" id="occupancyDetail">0 / 0 xona band</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Xonalar</h3>
+            <button class="btn-icon" id="openRoomModalBtn" title="Yangi xona">+</button>
+          </div>
           <table class="data-table" id="roomsTable">
             <thead><tr><th>Xona</th><th>Turi</th><th>Narxi/kecha</th><th>Holati</th></tr></thead>
             <tbody></tbody>
@@ -231,19 +234,10 @@
         </div>
 
         <div class="card">
-          <h3>Mehmonni joylashtirish</h3>
-          <form id="bookingForm" class="inline-form">
-            <select id="bookingRoomSelect"></select>
-            <input type="text" id="guestName" placeholder="Mehmon F.I.Sh." required />
-            <input type="text" id="guestPhone" placeholder="Telefon (ixtiyoriy)" />
-            <input type="number" id="bookingNights" placeholder="Necha kecha" min="1" value="1" required />
-            <button type="submit" class="btn-secondary">Joylashtirish</button>
-          </form>
-          <p class="form-message" id="bookingMessage"></p>
-        </div>
-
-        <div class="card">
-          <h3>Bronlar</h3>
+          <div class="card-header">
+            <h3>Mehmonni joylashtirish</h3>
+            <button class="btn-icon" id="openBookingModalBtn" title="Mehmon joylashtirish">+</button>
+          </div>
           <table class="data-table" id="bookingsTable">
             <thead><tr><th>Mehmon</th><th>Necha kecha</th><th>Summasi</th><th>Holati</th><th></th></tr></thead>
             <tbody></tbody>
@@ -254,6 +248,14 @@
     </main>
   </div>
 </div>
+
+<!-- ============ MODALLAR ============ -->
+<div id="modalOverlay" class="modal-overlay hidden">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+
+<!-- ============ TOAST KONTEYNERI ============ -->
+<div class="toast-container" id="toastContainer"></div>
 
 <script src="config.js"></script>
 <script src="app.js"></script>

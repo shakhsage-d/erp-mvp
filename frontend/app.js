@@ -1,5 +1,5 @@
 // =========================================================
-// Ustun frontend — auth (JWT) + har bir modul bilan ishlash
+// Ustun frontend — auth (JWT + refresh) + har bir modul bilan ishlash
 // =========================================================
 
 const API = window.APP_CONFIG.API_BASE;
@@ -30,7 +30,6 @@ function isLoggedIn() { return !!getToken(); }
 async function tryRefreshToken() {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return false;
-
   try {
     const res = await fetch(`${API}/auth/refresh`, {
       method: "POST",
@@ -38,7 +37,6 @@ async function tryRefreshToken() {
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
     if (!res.ok) return false;
-
     const data = await res.json();
     localStorage.setItem("ustun_token", data.access_token);
     localStorage.setItem("ustun_refresh_token", data.refresh_token);
@@ -57,17 +55,10 @@ async function api(path, options = {}, _isRetry = false) {
   const res = await fetch(`${API}${path}`, { ...options, headers });
 
   if (res.status === 401) {
-    // Access token muddati tugagan bo'lishi mumkin — bir marta
-    // refresh token orqali yangilashga urinamiz, foydalanuvchi
-    // qayta login qilmasdan davom etishi uchun.
     if (!_isRetry) {
       const refreshed = await tryRefreshToken();
-      if (refreshed) {
-        return api(path, options, true);
-      }
+      if (refreshed) return api(path, options, true);
     }
-    // Refresh ham ishlamadi (yoki bu allaqachon qayta urinish edi) —
-    // haqiqatan ham qayta login kerak.
     clearSession();
     showAuthScreen();
     throw new Error("Sessiya tugagan, qayta kiring");
@@ -84,6 +75,55 @@ async function api(path, options = {}, _isRetry = false) {
   }
   return body;
 }
+
+// ---------- Toast bildirishnomalar ----------
+function toast(message, type = "success") {
+  const container = document.getElementById("toastContainer");
+  const el = document.createElement("div");
+  el.className = `toast ${type}`;
+  el.textContent = message;
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = "0";
+    el.style.transition = "opacity 0.3s ease";
+    setTimeout(() => el.remove(), 300);
+  }, 3200);
+}
+
+// ---------- Modal oynalar (umumiy) ----------
+function openModal(titleText, bodyHtml, onSubmit, submitLabel = "Saqlash") {
+  const box = document.getElementById("modalBox");
+  box.innerHTML = `
+    <h3>${titleText}</h3>
+    <form class="modal-form" id="dynamicModalForm">
+      ${bodyHtml}
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" id="modalCancelBtn">Bekor qilish</button>
+        <button type="submit" class="btn-primary">${submitLabel}</button>
+      </div>
+    </form>
+  `;
+  document.getElementById("modalOverlay").classList.remove("hidden");
+  document.getElementById("modalCancelBtn").addEventListener("click", closeModal);
+  document.getElementById("dynamicModalForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    try {
+      await onSubmit(e.target);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+function closeModal() {
+  document.getElementById("modalOverlay").classList.add("hidden");
+}
+
+document.getElementById("modalOverlay").addEventListener("click", (e) => {
+  if (e.target.id === "modalOverlay") closeModal();
+});
 
 // ---------- Ekranlar orasida almashish ----------
 function showAuthScreen() {
@@ -106,10 +146,6 @@ function roleLabelText(role) {
 }
 
 // ---------- Rolga qarab qaysi tab/bo'lim ko'rinishini belgilash ----------
-// ESLATMA: bu FAQAT interfeysni soddalashtirish uchun (foydalanuvchi
-// ishlata olmaydigan tugmalarni ko'rmasin). Haqiqiy xavfsizlik tekshiruvi
-// har doim backend'da (`require_permission`) amalga oshadi — frontend
-// bu yerda xato qilsa ham, backend baribir ruxsatsiz amalni rad etadi.
 const ROLE_VISIBILITY = {
   owner: ["inventory", "finance", "pms", "employees"],
   cashier: [],
@@ -125,7 +161,7 @@ function applyRoleGates() {
   });
 }
 
-// ---------- Auth ekrani: tablar (Kirish / Ro'yxatdan o'tish) ----------
+// ---------- Auth ekrani: tablar ----------
 document.querySelectorAll(".auth-tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".auth-tab").forEach((t) => t.classList.remove("active"));
@@ -150,6 +186,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     });
     saveSession(data);
     showAppShell();
+    toast(`Xush kelibsiz, ${data.company_name}!`);
   } catch (err) {
     errEl.textContent = err.message;
   }
@@ -172,6 +209,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
     });
     saveSession(data);
     showAppShell();
+    toast("Xush kelibsiz! Tizim tayyor 🎉");
   } catch (err) {
     errEl.textContent = err.message;
   }
@@ -186,7 +224,7 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: refreshToken }),
       });
-    } catch (_) { /* server bilan bog'lanib bo'lmasa ham, mahalliy chiqishni davom ettiramiz */ }
+    } catch (_) { /* jim o'tkazamiz */ }
   }
   clearSession();
   showAuthScreen();
@@ -216,26 +254,42 @@ function loadCurrentView() {
   if (view === "pms") loadPmsView();
 }
 
-function setMessage(elId, text, isError = false) {
-  const el = document.getElementById(elId);
-  el.textContent = text;
-  el.className = "form-message " + (isError ? "error" : "success");
-}
-
 function money(n) {
   return Number(n || 0).toLocaleString("uz-UZ");
+}
+
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+function renderPagination(containerId, page, totalPages, onPageChange) {
+  const el = document.getElementById(containerId);
+  if (totalPages <= 1) { el.innerHTML = ""; return; }
+  el.innerHTML = `
+    <button id="${containerId}-prev" ${page <= 1 ? "disabled" : ""}>← Oldingi</button>
+    <span>${page} / ${totalPages}</span>
+    <button id="${containerId}-next" ${page >= totalPages ? "disabled" : ""}>Keyingi →</button>
+  `;
+  document.getElementById(`${containerId}-prev`)?.addEventListener("click", () => onPageChange(page - 1));
+  document.getElementById(`${containerId}-next`)?.addEventListener("click", () => onPageChange(page + 1));
+}
+
+function showEmptyState(tableId, emptyId, isEmpty) {
+  document.getElementById(tableId).classList.toggle("hidden", isEmpty);
+  document.getElementById(emptyId)?.classList.toggle("hidden", !isEmpty);
 }
 
 // =========================================================
 // SAVDO
 // =========================================================
-let saleCart = []; // {product_id, name, price, qty}
+let saleCart = [];
 let productsCache = [];
 
 async function loadSalesView() {
-  // ERP 2.0: backend endi sahifalab qaytaradi ({items, total, ...}).
-  // Hozircha to'liq sahifalash UI'si keyingi (UI/UX) bosqichda qo'shiladi —
-  // shu oraliqda page_size=100 bilan "deyarli barchasi"ni ko'rsatamiz.
   const response = await api("/inventory/products?page_size=100");
   productsCache = response.items;
   const select = document.getElementById("saleProductSelect");
@@ -266,7 +320,7 @@ function renderCart() {
         <td>${item.name}</td>
         <td>${item.qty}</td>
         <td class="mono">${money(item.price * item.qty)}</td>
-        <td><button class="link-btn" onclick="removeCartItem(${idx})">olib tashlash</button></td>
+        <td><button class="link-btn danger" onclick="removeCartItem(${idx})">olib tashlash</button></td>
       </tr>`)
     .join("");
   const total = saleCart.reduce((sum, i) => sum + i.price * i.qty, 0);
@@ -280,7 +334,7 @@ function removeCartItem(idx) {
 
 document.getElementById("saleCheckoutBtn").addEventListener("click", async () => {
   if (saleCart.length === 0) {
-    setMessage("saleMessage", "Chekka mahsulot qo'shing", true);
+    toast("Chekka mahsulot qo'shing", "error");
     return;
   }
   try {
@@ -290,21 +344,23 @@ document.getElementById("saleCheckoutBtn").addEventListener("click", async () =>
         items: saleCart.map((i) => ({ product_id: i.product_id, quantity: i.qty })),
       }),
     });
-    setMessage("saleMessage", "Chek muvaffaqiyatli yopildi ✅");
+    toast("Chek muvaffaqiyatli yopildi ✅");
     saleCart = [];
     await loadSalesView();
   } catch (err) {
-    setMessage("saleMessage", err.message, true);
+    toast(err.message, "error");
   }
 });
 
 // =========================================================
 // OMBOR
 // =========================================================
-async function loadInventoryView() {
-  const response = await api("/inventory/products?page_size=100");
+let inventoryState = { page: 1, search: "" };
+
+async function loadInventoryView(page = inventoryState.page, search = inventoryState.search) {
+  inventoryState = { page, search };
+  const response = await api(`/inventory/products?page=${page}&page_size=10&search=${encodeURIComponent(search)}`);
   const products = response.items;
-  productsCache = products;
 
   const tbody = document.querySelector("#productsTable tbody");
   tbody.innerHTML = products
@@ -318,64 +374,91 @@ async function loadInventoryView() {
       </tr>`)
     .join("");
 
-  const stockSelect = document.getElementById("stockInProductSelect");
-  stockSelect.innerHTML = products.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
+  showEmptyState("productsTable", "productsEmptyState", products.length === 0);
+  renderPagination("productsPagination", response.page, response.total_pages, (p) => loadInventoryView(p, search));
 }
 
-document.getElementById("productForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  try {
-    await api("/inventory/products", {
-      method: "POST",
-      body: JSON.stringify({
-        name: document.getElementById("prodName").value.trim(),
-        unit: document.getElementById("prodUnit").value.trim() || "dona",
-        purchase_price: Number(document.getElementById("prodPurchasePrice").value) || 0,
-        sale_price: Number(document.getElementById("prodSalePrice").value),
-        quantity: Number(document.getElementById("prodQty").value) || 0,
-      }),
-    });
-    setMessage("productMessage", "Mahsulot qo'shildi ✅");
-    e.target.reset();
-    document.getElementById("prodUnit").value = "dona";
-    await loadInventoryView();
-  } catch (err) {
-    setMessage("productMessage", err.message, true);
-  }
+document.getElementById("productSearchInput").addEventListener("input", debounce((e) => {
+  loadInventoryView(1, e.target.value.trim());
+}, 350));
+
+document.getElementById("openProductModalBtn").addEventListener("click", () => {
+  openModal("Yangi mahsulot", `
+    <label>Nomi <input type="text" name="name" required /></label>
+    <label>Birligi <input type="text" name="unit" value="dona" /></label>
+    <label>Tannarx <input type="number" name="purchase_price" min="0" value="0" /></label>
+    <label>Sotish narxi <input type="number" name="sale_price" min="0" required /></label>
+    <label>Boshlang'ich qoldiq <input type="number" name="quantity" min="0" value="0" /></label>
+  `, async (form) => {
+    const fd = new FormData(form);
+    try {
+      await api("/inventory/products", {
+        method: "POST",
+        body: JSON.stringify({
+          name: fd.get("name").trim(),
+          unit: fd.get("unit").trim() || "dona",
+          purchase_price: Number(fd.get("purchase_price")) || 0,
+          sale_price: Number(fd.get("sale_price")),
+          quantity: Number(fd.get("quantity")) || 0,
+        }),
+      });
+      toast("Mahsulot qo'shildi ✅");
+      closeModal();
+      await loadInventoryView(1, inventoryState.search);
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  });
 });
 
-document.getElementById("stockInForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  try {
-    await api("/inventory/stock-in", {
-      method: "POST",
-      body: JSON.stringify({
-        product_id: Number(document.getElementById("stockInProductSelect").value),
-        quantity: Number(document.getElementById("stockInQty").value),
-        reason: document.getElementById("stockInReason").value.trim() || null,
-      }),
-    });
-    setMessage("stockInMessage", "Kirim qilindi ✅");
-    e.target.reset();
-    await loadInventoryView();
-  } catch (err) {
-    setMessage("stockInMessage", err.message, true);
-  }
+document.getElementById("openStockInModalBtn").addEventListener("click", async () => {
+  const response = await api("/inventory/products?page_size=100");
+  const options = response.items.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
+  openModal("Omborga kirim", `
+    <label>Mahsulot <select name="product_id">${options}</select></label>
+    <label>Miqdor <input type="number" name="quantity" min="0.01" step="0.01" required /></label>
+    <label>Izoh (ixtiyoriy) <input type="text" name="reason" /></label>
+  `, async (form) => {
+    const fd = new FormData(form);
+    try {
+      await api("/inventory/stock-in", {
+        method: "POST",
+        body: JSON.stringify({
+          product_id: Number(fd.get("product_id")),
+          quantity: Number(fd.get("quantity")),
+          reason: fd.get("reason")?.trim() || null,
+        }),
+      });
+      toast("Kirim qilindi ✅");
+      closeModal();
+      await loadInventoryView(inventoryState.page, inventoryState.search);
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  }, "Kirim qilish");
 });
 
 // =========================================================
 // MOLIYA
 // =========================================================
+let financeState = { page: 1, search: "" };
+
 async function loadFinanceView() {
   const summary = await api("/finance/summary");
   document.getElementById("statIncome").textContent = money(summary.total_income);
   document.getElementById("statExpense").textContent = money(summary.total_expense);
   document.getElementById("statProfit").textContent = money(summary.net_profit);
 
-  const transactionsResponse = await api("/finance/transactions?page_size=50");
-  const transactions = transactionsResponse.items;
+  await loadTransactions(1, "");
+  await loadDailySalesChart();
+  await loadTopProducts();
+}
+
+async function loadTransactions(page = financeState.page, search = financeState.search) {
+  financeState = { page, search };
+  const response = await api(`/finance/transactions?page=${page}&page_size=10&search=${encodeURIComponent(search)}`);
   const tbody = document.querySelector("#transactionsTable tbody");
-  tbody.innerHTML = transactions
+  tbody.innerHTML = response.items
     .map((t) => `
       <tr>
         <td>${t.type === "income" ? "Kirim" : "Chiqim"}</td>
@@ -384,6 +467,42 @@ async function loadFinanceView() {
         <td>${new Date(t.created_at).toLocaleString("uz-UZ")}</td>
       </tr>`)
     .join("");
+  renderPagination("transactionsPagination", response.page, response.total_pages, (p) => loadTransactions(p, search));
+}
+
+document.getElementById("transactionSearchInput").addEventListener("input", debounce((e) => {
+  loadTransactions(1, e.target.value.trim());
+}, 350));
+
+async function loadDailySalesChart() {
+  try {
+    const data = await api("/finance/analytics/daily-sales?days=14");
+    const chartEl = document.getElementById("dailySalesChart");
+    if (data.length === 0) {
+      chartEl.innerHTML = `<div class="empty-state" style="padding:20px 0;">
+        <div class="empty-hint">Hali savdo tarixi yo'q</div></div>`;
+      return;
+    }
+    const max = Math.max(...data.map((d) => d.total_income), 1);
+    chartEl.innerHTML = data.map((d) => {
+      const heightPct = Math.max(4, (d.total_income / max) * 100);
+      return `<div class="mini-bar" style="height:${heightPct}%" title="${d.date}: ${money(d.total_income)} so'm"></div>`;
+    }).join("");
+  } catch (_) { /* ruxsat yo'q bo'lsa jim o'tkaziladi */ }
+}
+
+async function loadTopProducts() {
+  try {
+    const data = await api("/sales/analytics/top-products?days=30&limit=5");
+    const list = document.getElementById("topProductsList");
+    if (data.length === 0) {
+      list.innerHTML = `<li style="color:var(--ink-soft);">Hali sotuv tarixi yo'q</li>`;
+      return;
+    }
+    list.innerHTML = data
+      .map((p) => `<li><span>${p.product_name}</span><span class="mono">${money(p.total_revenue)} so'm</span></li>`)
+      .join("");
+  } catch (_) { /* jim o'tkaziladi */ }
 }
 
 // =========================================================
@@ -415,7 +534,7 @@ async function loadHrmsView() {
             <td>
               ${u.role === "owner" ? "" : (
                 u.is_active
-                  ? `<button class="link-btn" onclick="deactivateEmployee(${u.id})">faolsizlantirish</button>`
+                  ? `<button class="link-btn danger" onclick="deactivateEmployee(${u.id})">faolsizlantirish</button>`
                   : `<button class="link-btn" onclick="reactivateEmployee(${u.id})">qayta faollashtirish</button>`
               )}
             </td>
@@ -429,70 +548,84 @@ async function deactivateEmployee(userId) {
   if (!confirm("Bu xodimni faolsizlantirmoqchimisiz? U tizimga kira olmay qoladi.")) return;
   try {
     await api(`/auth/users/${userId}/deactivate`, { method: "POST" });
+    toast("Xodim faolsizlantirildi");
     await loadHrmsView();
   } catch (err) {
-    alert(err.message);
+    toast(err.message, "error");
   }
 }
 
 async function reactivateEmployee(userId) {
   try {
     await api(`/auth/users/${userId}/reactivate`, { method: "POST" });
+    toast("Xodim qayta faollashtirildi ✅");
     await loadHrmsView();
   } catch (err) {
-    alert(err.message);
+    toast(err.message, "error");
   }
 }
 
 document.getElementById("clockInBtn").addEventListener("click", async () => {
   try {
     await api("/hrms/shifts/clock-in", { method: "POST" });
-    setMessage("shiftMessage", "Ish boshlandi ✅");
+    toast("Ish boshlandi ✅");
     await loadHrmsView();
   } catch (err) {
-    setMessage("shiftMessage", err.message, true);
+    toast(err.message, "error");
   }
 });
 
 document.getElementById("clockOutBtn").addEventListener("click", async () => {
   try {
     await api("/hrms/shifts/clock-out", { method: "POST" });
-    setMessage("shiftMessage", "Ish tugatildi ✅");
+    toast("Ish tugatildi ✅");
     await loadHrmsView();
   } catch (err) {
-    setMessage("shiftMessage", err.message, true);
+    toast(err.message, "error");
   }
 });
 
-document.getElementById("employeeForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  try {
-    await api("/auth/users", {
-      method: "POST",
-      body: JSON.stringify({
-        full_name: document.getElementById("empName").value.trim(),
-        phone: document.getElementById("empPhone").value.trim(),
-        password: document.getElementById("empPassword").value,
-        role: document.getElementById("empRole").value,
-      }),
-    });
-    setMessage("employeeMessage", "Xodim qo'shildi ✅");
-    e.target.reset();
-    await loadHrmsView();
-  } catch (err) {
-    setMessage("employeeMessage", err.message, true);
-  }
+document.getElementById("openEmployeeModalBtn").addEventListener("click", () => {
+  openModal("Yangi xodim qo'shish", `
+    <label>F.I.Sh. <input type="text" name="full_name" required /></label>
+    <label>Telefon raqami <input type="text" name="phone" required /></label>
+    <label>Parol <input type="password" name="password" minlength="6" required /></label>
+    <label>Lavozim
+      <select name="role">
+        <option value="cashier">Sotuvchi</option>
+        <option value="storekeeper">Omborchi</option>
+        <option value="receptionist">Resepshin (mehmonxona)</option>
+      </select>
+    </label>
+  `, async (form) => {
+    const fd = new FormData(form);
+    try {
+      await api("/auth/users", {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: fd.get("full_name").trim(),
+          phone: fd.get("phone").trim(),
+          password: fd.get("password"),
+          role: fd.get("role"),
+        }),
+      });
+      toast("Xodim qo'shildi ✅");
+      closeModal();
+      await loadHrmsView();
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  });
 });
 
 // =========================================================
 // MEHMONXONA (PMS)
 // =========================================================
-let roomsCache = [];
-
 async function loadPmsView() {
-  roomsCache = await api("/pms/rooms");
+  const roomsResponse = await api("/pms/rooms");
+  const rooms = roomsResponse.items || roomsResponse; // hozircha /pms/rooms sahifalanmagan (oddiy ro'yxat)
   const tbody = document.querySelector("#roomsTable tbody");
-  tbody.innerHTML = roomsCache
+  tbody.innerHTML = rooms
     .map((r) => `
       <tr>
         <td>${r.room_number}</td>
@@ -502,11 +635,11 @@ async function loadPmsView() {
       </tr>`)
     .join("");
 
-  const availableRooms = roomsCache.filter((r) => r.status === "available");
-  const select = document.getElementById("bookingRoomSelect");
-  select.innerHTML = availableRooms
-    .map((r) => `<option value="${r.id}">${r.room_number} (${money(r.price_per_night)} so'm/kecha)</option>`)
-    .join("") || "<option disabled>Bo'sh xona yo'q</option>";
+  try {
+    const occ = await api("/pms/analytics/occupancy");
+    document.getElementById("occupancyRate").textContent = `${occ.occupancy_rate}%`;
+    document.getElementById("occupancyDetail").textContent = `${occ.occupied_rooms} / ${occ.total_rooms} xona band`;
+  } catch (_) { /* jim o'tkaziladi */ }
 
   try {
     const bookings = await api("/pms/bookings");
@@ -528,53 +661,71 @@ function roomStatusText(status) {
   return { available: "Bo'sh", occupied: "Band", maintenance: "Texnik xizmatda" }[status] || status;
 }
 
-document.getElementById("roomForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  try {
-    await api("/pms/rooms", {
-      method: "POST",
-      body: JSON.stringify({
-        room_number: document.getElementById("roomNumber").value.trim(),
-        room_type: document.getElementById("roomType").value.trim() || "standard",
-        price_per_night: Number(document.getElementById("roomPrice").value),
-      }),
-    });
-    setMessage("roomMessage", "Xona qo'shildi ✅");
-    e.target.reset();
-    document.getElementById("roomType").value = "standard";
-    await loadPmsView();
-  } catch (err) {
-    setMessage("roomMessage", err.message, true);
-  }
+document.getElementById("openRoomModalBtn").addEventListener("click", () => {
+  openModal("Yangi xona", `
+    <label>Xona raqami <input type="text" name="room_number" required /></label>
+    <label>Turi <input type="text" name="room_type" value="standard" /></label>
+    <label>Kechasi narxi <input type="number" name="price_per_night" min="0" required /></label>
+  `, async (form) => {
+    const fd = new FormData(form);
+    try {
+      await api("/pms/rooms", {
+        method: "POST",
+        body: JSON.stringify({
+          room_number: fd.get("room_number").trim(),
+          room_type: fd.get("room_type").trim() || "standard",
+          price_per_night: Number(fd.get("price_per_night")),
+        }),
+      });
+      toast("Xona qo'shildi ✅");
+      closeModal();
+      await loadPmsView();
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  });
 });
 
-document.getElementById("bookingForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  try {
-    await api("/pms/bookings", {
-      method: "POST",
-      body: JSON.stringify({
-        room_id: Number(document.getElementById("bookingRoomSelect").value),
-        guest_name: document.getElementById("guestName").value.trim(),
-        guest_phone: document.getElementById("guestPhone").value.trim() || null,
-        nights: Number(document.getElementById("bookingNights").value),
-      }),
-    });
-    setMessage("bookingMessage", "Mehmon joylashtirildi ✅");
-    e.target.reset();
-    document.getElementById("bookingNights").value = 1;
-    await loadPmsView();
-  } catch (err) {
-    setMessage("bookingMessage", err.message, true);
-  }
+document.getElementById("openBookingModalBtn").addEventListener("click", async () => {
+  const roomsResponse = await api("/pms/rooms");
+  const rooms = (roomsResponse.items || roomsResponse).filter((r) => r.status === "available");
+  const options = rooms.length
+    ? rooms.map((r) => `<option value="${r.id}">${r.room_number} (${money(r.price_per_night)} so'm/kecha)</option>`).join("")
+    : `<option disabled>Bo'sh xona yo'q</option>`;
+
+  openModal("Mehmonni joylashtirish", `
+    <label>Xona <select name="room_id">${options}</select></label>
+    <label>Mehmon F.I.Sh. <input type="text" name="guest_name" required /></label>
+    <label>Telefon (ixtiyoriy) <input type="text" name="guest_phone" /></label>
+    <label>Necha kecha <input type="number" name="nights" min="1" value="1" required /></label>
+  `, async (form) => {
+    const fd = new FormData(form);
+    try {
+      await api("/pms/bookings", {
+        method: "POST",
+        body: JSON.stringify({
+          room_id: Number(fd.get("room_id")),
+          guest_name: fd.get("guest_name").trim(),
+          guest_phone: fd.get("guest_phone")?.trim() || null,
+          nights: Number(fd.get("nights")),
+        }),
+      });
+      toast("Mehmon joylashtirildi ✅");
+      closeModal();
+      await loadPmsView();
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  }, "Joylashtirish");
 });
 
 async function checkoutBooking(bookingId) {
   try {
     await api(`/pms/bookings/${bookingId}/checkout`, { method: "POST" });
+    toast("Mehmon chiqarildi, to'lov moliyaga yozildi ✅");
     await loadPmsView();
   } catch (err) {
-    alert(err.message);
+    toast(err.message, "error");
   }
 }
 
