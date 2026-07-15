@@ -98,3 +98,21 @@ class User(Base):
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True)
+
+
+class RefreshToken(Base):
+    """
+    Refresh tokenlar — bazada XESHLANGAN holda saqlanadi (xom token
+    hech qachon bazaga yozilmaydi). Bu orqali "logout" yoki "token
+    o'g'irlandi" holatida uni bekor qilish (revoke) mumkin bo'ladi —
+    JWT (access token)dan farqli o'laroq, u bazaga tegmasdan
+    tekshiriladi va shu sababli bekor qilib bo'lmaydi.
+    """
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String, unique=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    revoked_at = Column(DateTime, nullable=True)

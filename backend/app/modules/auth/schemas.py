@@ -18,10 +18,25 @@ class LoginRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     company_id: int
     company_name: str
     role: str  # lavozim NOMI (masalan "owner") — ko'rsatish uchun
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class RefreshResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str
 
 
 class EmployeeCreateRequest(BaseModel):

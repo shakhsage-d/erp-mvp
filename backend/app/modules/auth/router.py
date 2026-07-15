@@ -15,7 +15,10 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from app.db.session import get_db
-from app.core.security import hash_password, verify_password, create_access_token
+from app.core.security import (
+    hash_password, verify_password, create_access_token,
+    generate_refresh_token, hash_refresh_token,
+)
 from app.core.exceptions import ConflictError, UnauthorizedError, ForbiddenError, NotFoundError
 from app.core.tenant import get_current_company_id, get_current_user_id
 from app.core.permissions import require_permission
@@ -27,6 +30,24 @@ from app.modules.auth.seed import ensure_seeded, get_default_role
 
 router = APIRouter(prefix="/auth", tags=["Auth - Kirish"])
 logger = get_logger(__name__)
+
+
+def _issue_tokens(db: Session, user: models.User) -> tuple[str, str]:
+    """
+    Har bir muvaffaqiyatli login/register'da chaqiriladi: yangi access
+    (JWT) va refresh (bazada xeshlangan) tokenlarni yaratadi.
+    Qaytaradi: (access_token, refresh_token_xom)
+    """
+    access_token = create_access_token({
+        "sub": str(user.id), "company_id": user.company_id, "role_id": user.role_id,
+    })
+
+    raw_refresh, refresh_hash, expires_at = generate_refresh_token()
+    db.add(models.RefreshToken(
+        user_id=user.id, token_hash=refresh_hash, expires_at=expires_at,
+    ))
+
+    return access_token, raw_refresh
 
 
 @router.post(
@@ -65,17 +86,19 @@ def register(
         role_id=owner_role.id,
     )
     db.add(user)
+    db.flush()  # user.id ni token yaratish uchun olish
+
+    access_token, refresh_token = _issue_tokens(db, user)
+
     db.commit()
     db.refresh(company)
     db.refresh(user)
 
-    token = create_access_token({
-        "sub": str(user.id), "company_id": company.id, "role_id": owner_role.id,
-    })
     logger.info("Yangi kompaniya ro'yxatdan o'tdi: company_id=%s name=%s", company.id, company.name)
 
     return schemas.TokenResponse(
-        access_token=token, company_id=company.id, company_name=company.name, role=owner_role.name,
+        access_token=access_token, refresh_token=refresh_token,
+        company_id=company.id, company_name=company.name, role=owner_role.name,
     )
 
 
@@ -103,14 +126,91 @@ def login(
     company = db.query(models.Company).filter(models.Company.id == user.company_id).first()
     role = db.query(models.Role).filter(models.Role.id == user.role_id).first()
 
-    token = create_access_token({
-        "sub": str(user.id), "company_id": user.company_id, "role_id": user.role_id,
-    })
+    access_token, refresh_token = _issue_tokens(db, user)
+    db.commit()
+
     logger.info("Kirish muvaffaqiyatli: company_id=%s user_id=%s", user.company_id, user.id)
 
     return schemas.TokenResponse(
-        access_token=token, company_id=user.company_id, company_name=company.name, role=role.name,
+        access_token=access_token, refresh_token=refresh_token,
+        company_id=user.company_id, company_name=company.name, role=role.name,
     )
+
+
+@router.post(
+    "/refresh",
+    response_model=schemas.RefreshResponse,
+    summary="Yangi access token olish (refresh token orqali)",
+)
+@limiter.limit("30/minute")
+def refresh_token_endpoint(
+    request: Request,
+    payload: schemas.RefreshRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Access token muddati tugaganda (30 daqiqa), foydalanuvchi qayta
+    login qilmasdan, shu endpoint orqali yangi access token oladi.
+
+    XAVFSIZLIK: har safar chaqirilganda ESKI refresh token BEKOR
+    QILINADI va YANGISI beriladi ("rotation") — agar kimdir eski
+    (masalan o'g'irlangan) tokendan foydalanmoqchi bo'lsa, u allaqachon
+    bekor qilingan bo'ladi.
+    """
+    token_hash = hash_refresh_token(payload.refresh_token)
+    stored = db.query(models.RefreshToken).filter(
+        models.RefreshToken.token_hash == token_hash,
+    ).first()
+
+    if (
+        not stored
+        or stored.revoked_at is not None
+        or stored.expires_at < datetime.utcnow()
+    ):
+        raise UnauthorizedError("Refresh token yaroqsiz, muddati tugagan yoki bekor qilingan")
+
+    user = db.query(models.User).filter(
+        models.User.id == stored.user_id,
+        models.User.deleted_at.is_(None),
+    ).first()
+    if not user:
+        raise UnauthorizedError("Foydalanuvchi topilmadi yoki faolsizlantirilgan")
+
+    # Eski tokenni bekor qilib, yangisini beramiz (rotation)
+    stored.revoked_at = datetime.utcnow()
+    new_access_token, new_refresh_token = _issue_tokens(db, user)
+    db.commit()
+
+    return schemas.RefreshResponse(access_token=new_access_token, refresh_token=new_refresh_token)
+
+
+@router.post(
+    "/logout",
+    summary="Tizimdan chiqish (refresh tokenni bekor qilish)",
+)
+def logout(
+    payload: schemas.LogoutRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Berilgan refresh tokenni bekor qiladi — shundan keyin u orqali
+    yangi access token olib bo'lmaydi. Access token (JWT) o'zi hali
+    biroz vaqt amal qilishi mumkin (30 daqiqagacha), lekin refresh
+    yo'q bo'lgani uchun sessiya davom etolmaydi.
+
+    Token topilmasa/allaqachon bekor bo'lsa ham, xatolik qaytarmaydi —
+    natija bir xil ("chiqildi"), bu orqali tokenning bazada bor-yo'qligi
+    haqida ma'lumot "sizib chiqmaydi".
+    """
+    token_hash = hash_refresh_token(payload.refresh_token)
+    stored = db.query(models.RefreshToken).filter(
+        models.RefreshToken.token_hash == token_hash,
+    ).first()
+    if stored and stored.revoked_at is None:
+        stored.revoked_at = datetime.utcnow()
+        db.commit()
+
+    return {"message": "Tizimdan chiqildi"}
 
 
 @router.post(

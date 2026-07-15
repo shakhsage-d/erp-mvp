@@ -2,7 +2,17 @@
 core/security.py
 -------------------
 Parolni xavfsiz saqlash (hech qachon ochiq matnda emas, faqat bcrypt
-hash sifatida) va JWT token yaratish/tekshirish shu yerda.
+hash sifatida), JWT (access) token yaratish/tekshirish, va refresh
+token (uzoq umrli, bekor qilinishi mumkin) yaratish shu yerda.
+
+IKKI TOKEN MODELI:
+  - ACCESS TOKEN (JWT, 30 daqiqa) — har bir so'rovda yuboriladi, o'zida
+    company_id/role_id kabi ma'lumotni saqlaydi, tekshirish uchun
+    bazaga murojaat qilinmaydi (tez).
+  - REFRESH TOKEN (tasodifiy, 30 kun) — faqat yangi access token olish
+    uchun ishlatiladi, BAZADA (xeshlangan holda) saqlanadi — shuning
+    uchun "logout" yoki "token o'g'irlandi" holatida uni BEKOR QILISH
+    (revoke) mumkin, JWT'dan farqli o'laroq.
 
 MUHIM: `SECRET_KEY` haqiqiy (production) muhitda albatta maxfiy va
 tasodifiy bo'lishi kerak (.env orqali, hech qachon kodga yozilmaydi).
@@ -11,13 +21,16 @@ ishlab chiqarishga chiqarish XAVFSIZ EMAS.
 """
 
 import os
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt as pyjwt
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 kun
+ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Endi qisqa umrli — refresh token bilan yangilanadi
+REFRESH_TOKEN_EXPIRE_DAYS = 30
 
 SECRET_KEY = os.getenv("SECRET_KEY", "mahalliy-sinov-uchun-xavfsiz-emas-kalit")
 if SECRET_KEY == "mahalliy-sinov-uchun-xavfsiz-emas-kalit" and os.getenv("ENV") == "production":
@@ -40,8 +53,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(payload: dict) -> str:
     """
-    JWT token yaratadi. `payload` odatda quyidagilarni o'z ichiga oladi:
-        {"sub": user_id, "company_id": ..., "role": ...}
+    JWT (access) token yaratadi. `payload` odatda quyidagilarni o'z
+    ichiga oladi: {"sub": user_id, "company_id": ..., "role_id": ...}
     """
     to_encode = payload.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -56,3 +69,24 @@ def decode_access_token(token: str) -> dict:
     buni chaqiruvchi (core/tenant.py) mos HTTP xatosiga aylantiradi.
     """
     return pyjwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+
+def generate_refresh_token() -> tuple[str, str, datetime]:
+    """
+    Yangi refresh token yaratadi.
+    Qaytaradi: (foydalanuvchiga yuboriladigan XOM token,
+                bazada saqlanadigan XESH, muddati tugash vaqti)
+
+    Xom token — faqat BIR MARTA, yaratilgan paytda ko'rinadi (javobda).
+    Bazada esa hech qachon xom holida saqlanmaydi — agar baza
+    "sizib chiqsa" ham, tokenlar ishlatilmaydigan bo'lib qoladi.
+    """
+    raw_token = secrets.token_urlsafe(48)
+    token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    return raw_token, token_hash, expires_at
+
+
+def hash_refresh_token(raw_token: str) -> str:
+    """Kelib tushgan refresh tokenni bazadagi xesh bilan solishtirish uchun."""
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()

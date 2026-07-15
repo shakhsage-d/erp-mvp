@@ -7,24 +7,49 @@ const API = window.APP_CONFIG.API_BASE;
 // ---------- Token va sessiya boshqaruvi ----------
 function saveSession(data) {
   localStorage.setItem("ustun_token", data.access_token);
-  localStorage.setItem("ustun_company_name", data.company_name);
-  localStorage.setItem("ustun_role", data.role);
+  localStorage.setItem("ustun_refresh_token", data.refresh_token);
+  if (data.company_name) localStorage.setItem("ustun_company_name", data.company_name);
+  if (data.role) localStorage.setItem("ustun_role", data.role);
 }
 
 function getToken() { return localStorage.getItem("ustun_token"); }
+function getRefreshToken() { return localStorage.getItem("ustun_refresh_token"); }
 function getRole() { return localStorage.getItem("ustun_role"); }
 function getCompanyName() { return localStorage.getItem("ustun_company_name"); }
 
 function clearSession() {
   localStorage.removeItem("ustun_token");
+  localStorage.removeItem("ustun_refresh_token");
   localStorage.removeItem("ustun_company_name");
   localStorage.removeItem("ustun_role");
 }
 
 function isLoggedIn() { return !!getToken(); }
 
+// ---------- Access token muddati tugaganda avtomatik yangilash ----------
+async function tryRefreshToken() {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch(`${API}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return false;
+
+    const data = await res.json();
+    localStorage.setItem("ustun_token", data.access_token);
+    localStorage.setItem("ustun_refresh_token", data.refresh_token);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 // ---------- Umumiy so'rov yuboruvchi (fetch wrapper) ----------
-async function api(path, options = {}) {
+async function api(path, options = {}, _isRetry = false) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -32,7 +57,17 @@ async function api(path, options = {}) {
   const res = await fetch(`${API}${path}`, { ...options, headers });
 
   if (res.status === 401) {
-    // Token yaroqsiz/eskirgan — qayta kirishga yo'naltiramiz
+    // Access token muddati tugagan bo'lishi mumkin — bir marta
+    // refresh token orqali yangilashga urinamiz, foydalanuvchi
+    // qayta login qilmasdan davom etishi uchun.
+    if (!_isRetry) {
+      const refreshed = await tryRefreshToken();
+      if (refreshed) {
+        return api(path, options, true);
+      }
+    }
+    // Refresh ham ishlamadi (yoki bu allaqachon qayta urinish edi) —
+    // haqiqatan ham qayta login kerak.
     clearSession();
     showAuthScreen();
     throw new Error("Sessiya tugagan, qayta kiring");
@@ -142,7 +177,17 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
   }
 });
 
-document.getElementById("logoutBtn").addEventListener("click", () => {
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  const refreshToken = getRefreshToken();
+  if (refreshToken) {
+    try {
+      await fetch(`${API}/auth/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+    } catch (_) { /* server bilan bog'lanib bo'lmasa ham, mahalliy chiqishni davom ettiramiz */ }
+  }
   clearSession();
   showAuthScreen();
 });
