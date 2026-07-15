@@ -1,5 +1,7 @@
 # Ustun
 
+![Backend Tests](https://github.com/shakhsage-d/erp-mvp/actions/workflows/tests.yml/badge.svg)
+
 Kichik do'kon, kafe va mehmonxonalar uchun WMS + FMS ERP tizimi. Arxitektura va
 rivojlanish rejasi uchun qarang: [`docs/ERP_Arxitektura_va_Yol_Xaritasi.md`](docs/ERP_Arxitektura_va_Yol_Xaritasi.md)
 
