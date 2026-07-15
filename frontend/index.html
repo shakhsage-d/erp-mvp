@@ -6,7 +6,7 @@
 <title>Ustun — Boshqaruv paneli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -16,7 +16,7 @@
   <div class="auth-card">
     <div class="brand">
       <span class="brand-mark">Ustun</span>
-      <span class="brand-tagline">Do'kon, kafe va mehmonxona uchun bitta ishonchli tayanch</span>
+      <span class="brand-tagline">Do'kon, kafe va mehmonxona uchun ERP tizimi</span>
     </div>
 
     <div class="auth-tabs">
@@ -65,37 +65,65 @@
 <!-- ============ ASOSIY ILOVA ============ -->
 <div id="appShell" class="app-shell hidden">
 
-  <header class="topbar">
-    <div class="topbar-brand">Ustun</div>
-    <div class="topbar-info">
-      <span id="companyNameLabel" class="company-name"></span>
-      <span id="roleLabel" class="role-badge"></span>
-      <button id="logoutBtn" class="btn-ghost">Chiqish</button>
+  <!-- CHAP SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M6 21h12"/><path d="M6 3h12"/><path d="M8 3v18"/><path d="M16 3v18"/></svg>
+      Ustun
     </div>
-  </header>
-  <div class="girih-divider"></div>
 
-  <div class="layout">
-
-    <!-- "DAFTAR YORLIQLARI" — MODUL TANLAGICH -->
-    <nav class="ledger-tabs" id="ledgerTabs">
-      <button class="ledger-tab active" data-view="sales">🧾 Savdo</button>
-      <button class="ledger-tab" data-view="inventory" data-role-gate="inventory">📦 Ombor</button>
-      <button class="ledger-tab" data-view="finance" data-role-gate="finance">💰 Moliya</button>
-      <button class="ledger-tab" data-view="hrms">🕒 Xodimlar</button>
-      <button class="ledger-tab" data-view="pms" data-role-gate="pms">🏨 Mehmonxona</button>
+    <nav class="sidebar-nav" id="ledgerTabs">
+      <button class="nav-item active" data-view="sales">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
+        Savdo
+      </button>
+      <button class="nav-item" data-view="inventory" data-role-gate="inventory">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+        Ombor
+      </button>
+      <button class="nav-item" data-view="finance" data-role-gate="finance">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="10" width="3.5" height="10"/><rect x="10.25" y="5" width="3.5" height="15"/><rect x="16.5" y="13" width="3.5" height="7"/></svg>
+        Moliya
+      </button>
+      <button class="nav-item" data-view="hrms">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Xodimlar
+      </button>
+      <button class="nav-item" data-view="pms" data-role-gate="pms">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20"/><line x1="8" y1="6" x2="8" y2="6.01"/><line x1="12" y1="6" x2="12" y2="6.01"/><line x1="16" y1="6" x2="16" y2="6.01"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="9" y1="22" x2="9" y2="16"/><line x1="15" y1="22" x2="15" y2="16"/></svg>
+        Mehmonxona
+      </button>
     </nav>
 
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar" id="userAvatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="companyNameLabel"></div>
+          <div class="sidebar-user-role" id="roleLabel"></div>
+        </div>
+      </div>
+      <button id="logoutBtn" class="btn-ghost" style="width:100%;">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Chiqish
+      </button>
+    </div>
+  </aside>
+
+  <!-- KONTENT -->
+  <div class="content-wrap">
     <main class="content">
 
       <!-- SAVDO -->
       <section id="view-sales" class="view active">
-        <div class="view-header"><h2>Tezkor sotish</h2></div>
+        <div class="view-header">
+          <div><h2>Tezkor sotish</h2><div class="view-subtitle">Chek yig'ib, darhol yoping</div></div>
+        </div>
         <div class="card">
           <div class="pos-row">
             <select id="saleProductSelect"></select>
             <input type="number" id="saleQty" min="1" value="1" />
-            <button id="saleAddItemBtn" class="btn-secondary">+ Qo'shish</button>
+            <button id="saleAddItemBtn" class="btn-secondary">Qo'shish</button>
           </div>
           <table class="data-table" id="saleCartTable">
             <thead><tr><th>Mahsulot</th><th>Miqdor</th><th>Summasi</th><th></th></tr></thead>
@@ -111,16 +139,20 @@
       <!-- OMBOR -->
       <section id="view-inventory" class="view">
         <div class="view-header">
-          <h2>Ombor</h2>
+          <div><h2>Ombor</h2><div class="view-subtitle">Mahsulotlar va qoldiq</div></div>
           <div style="display:flex; gap:8px;">
-            <button class="btn-icon" id="openStockInModalBtn" title="Omborga kirim">↧</button>
-            <button class="btn-icon" id="openProductModalBtn" title="Yangi mahsulot">+</button>
+            <button class="btn-icon" id="openStockInModalBtn" title="Omborga kirim">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12l7 7 7-7"/></svg>
+            </button>
+            <button class="btn-icon" id="openProductModalBtn" title="Yangi mahsulot">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
           </div>
         </div>
 
         <div class="card">
           <div class="search-bar">
-            <span class="search-icon">🔎</span>
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="productSearchInput" placeholder="Mahsulot nomi bo'yicha qidirish..." />
           </div>
           <table class="data-table" id="productsTable">
@@ -128,9 +160,9 @@
             <tbody></tbody>
           </table>
           <div id="productsEmptyState" class="empty-state hidden">
-            <div class="empty-icon">📦</div>
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
             <div class="empty-title">Hali mahsulot yo'q</div>
-            <div class="empty-hint">Yuqoridagi "+" tugmasi orqali birinchi mahsulotingizni qo'shing</div>
+            <div class="empty-hint">Yuqoridagi tugma orqali birinchi mahsulotingizni qo'shing</div>
           </div>
           <div class="pagination" id="productsPagination"></div>
         </div>
@@ -138,7 +170,9 @@
 
       <!-- MOLIYA -->
       <section id="view-finance" class="view">
-        <div class="view-header"><h2>Moliya xulosasi</h2></div>
+        <div class="view-header">
+          <div><h2>Moliya xulosasi</h2><div class="view-subtitle">Kirim, chiqim va tendensiya</div></div>
+        </div>
         <div class="stat-row">
           <div class="stat-card">
             <span class="stat-label">Umumiy tushum</span>
@@ -168,7 +202,7 @@
 
         <div class="card">
           <div class="search-bar">
-            <span class="search-icon">🔎</span>
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="transactionSearchInput" placeholder="Manba bo'yicha qidirish (masalan Sale)..." />
           </div>
           <h3>So'nggi tranzaksiyalar</h3>
@@ -182,15 +216,17 @@
 
       <!-- XODIMLAR (HRMS) -->
       <section id="view-hrms" class="view">
-        <div class="view-header"><h2>Xodimlar</h2></div>
+        <div class="view-header">
+          <div><h2>Xodimlar</h2><div class="view-subtitle">Ish vaqti va jamoa</div></div>
+        </div>
 
         <div class="card">
           <h3>Mening ish vaqtim</h3>
-          <div class="shift-actions">
-            <button id="clockInBtn" class="btn-secondary">🟢 Ishni boshlash</button>
-            <button id="clockOutBtn" class="btn-secondary">🔴 Ishni tugatish</button>
+          <div class="shift-actions" style="margin-top:10px;">
+            <button id="clockInBtn" class="btn-secondary">Ishni boshlash</button>
+            <button id="clockOutBtn" class="btn-secondary">Ishni tugatish</button>
           </div>
-          <table class="data-table" id="myShiftsTable">
+          <table class="data-table" id="myShiftsTable" style="margin-top:14px;">
             <thead><tr><th>Boshlanishi</th><th>Tugashi</th><th>Davomiyligi (soat)</th></tr></thead>
             <tbody></tbody>
           </table>
@@ -198,8 +234,10 @@
 
         <div class="card" id="employeesCard" data-role-gate="employees">
           <div class="card-header">
-            <h3>Xodimlar</h3>
-            <button class="btn-icon" id="openEmployeeModalBtn" title="Xodim qo'shish">+</button>
+            <h3>Jamoa a'zolari</h3>
+            <button class="btn-icon" id="openEmployeeModalBtn" title="Xodim qo'shish">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
           </div>
           <table class="data-table" id="employeesTable">
             <thead><tr><th>F.I.Sh.</th><th>Telefon</th><th>Lavozim</th><th>Holati</th><th></th></tr></thead>
@@ -210,14 +248,16 @@
 
       <!-- MEHMONXONA (PMS) -->
       <section id="view-pms" class="view">
-        <div class="view-header"><h2>Mehmonxona</h2></div>
+        <div class="view-header">
+          <div><h2>Mehmonxona</h2><div class="view-subtitle">Xonalar va bronlar</div></div>
+        </div>
 
         <div class="card">
           <div class="gauge-wrap">
             <span class="gauge-number mono" id="occupancyRate">0%</span>
             <div>
-              <div style="font-weight:600;">To'lilik darajasi</div>
-              <div style="font-size:0.85rem; color:var(--ink-soft);" id="occupancyDetail">0 / 0 xona band</div>
+              <div style="font-weight:700;">To'lilik darajasi</div>
+              <div style="font-size:0.82rem; color:var(--ink-soft);" id="occupancyDetail">0 / 0 xona band</div>
             </div>
           </div>
         </div>
@@ -225,7 +265,9 @@
         <div class="card">
           <div class="card-header">
             <h3>Xonalar</h3>
-            <button class="btn-icon" id="openRoomModalBtn" title="Yangi xona">+</button>
+            <button class="btn-icon" id="openRoomModalBtn" title="Yangi xona">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
           </div>
           <table class="data-table" id="roomsTable">
             <thead><tr><th>Xona</th><th>Turi</th><th>Narxi/kecha</th><th>Holati</th></tr></thead>
@@ -236,7 +278,9 @@
         <div class="card">
           <div class="card-header">
             <h3>Mehmonni joylashtirish</h3>
-            <button class="btn-icon" id="openBookingModalBtn" title="Mehmon joylashtirish">+</button>
+            <button class="btn-icon" id="openBookingModalBtn" title="Mehmon joylashtirish">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
           </div>
           <table class="data-table" id="bookingsTable">
             <thead><tr><th>Mehmon</th><th>Necha kecha</th><th>Summasi</th><th>Holati</th><th></th></tr></thead>

@@ -134,8 +134,10 @@ function showAuthScreen() {
 function showAppShell() {
   document.getElementById("authScreen").classList.add("hidden");
   document.getElementById("appShell").classList.remove("hidden");
-  document.getElementById("companyNameLabel").textContent = getCompanyName() || "";
+  const companyName = getCompanyName() || "";
+  document.getElementById("companyNameLabel").textContent = companyName;
   document.getElementById("roleLabel").textContent = roleLabelText(getRole());
+  document.getElementById("userAvatar").textContent = companyName.charAt(0).toUpperCase() || "U";
   applyRoleGates();
   loadCurrentView();
 }
@@ -209,7 +211,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
     });
     saveSession(data);
     showAppShell();
-    toast("Xush kelibsiz! Tizim tayyor 🎉");
+    toast("Xush kelibsiz! Tizim tayyor");
   } catch (err) {
     errEl.textContent = err.message;
   }
@@ -231,9 +233,9 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
 });
 
 // ---------- Modul (ledger-tab) almashish ----------
-document.querySelectorAll(".ledger-tab").forEach((tab) => {
+document.querySelectorAll(".nav-item").forEach((tab) => {
   tab.addEventListener("click", () => {
-    document.querySelectorAll(".ledger-tab").forEach((t) => t.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach((t) => t.classList.remove("active"));
     document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
     tab.classList.add("active");
     document.getElementById(`view-${tab.dataset.view}`).classList.add("active");
@@ -242,7 +244,7 @@ document.querySelectorAll(".ledger-tab").forEach((tab) => {
 });
 
 function currentViewName() {
-  return document.querySelector(".ledger-tab.active")?.dataset.view || "sales";
+  return document.querySelector(".nav-item.active")?.dataset.view || "sales";
 }
 
 function loadCurrentView() {
@@ -344,7 +346,7 @@ document.getElementById("saleCheckoutBtn").addEventListener("click", async () =>
         items: saleCart.map((i) => ({ product_id: i.product_id, quantity: i.qty })),
       }),
     });
-    toast("Chek muvaffaqiyatli yopildi ✅");
+    toast("Chek muvaffaqiyatli yopildi");
     saleCart = [];
     await loadSalesView();
   } catch (err) {
@@ -402,7 +404,7 @@ document.getElementById("openProductModalBtn").addEventListener("click", () => {
           quantity: Number(fd.get("quantity")) || 0,
         }),
       });
-      toast("Mahsulot qo'shildi ✅");
+      toast("Mahsulot qo'shildi");
       closeModal();
       await loadInventoryView(1, inventoryState.search);
     } catch (err) {
@@ -429,7 +431,7 @@ document.getElementById("openStockInModalBtn").addEventListener("click", async (
           reason: fd.get("reason")?.trim() || null,
         }),
       });
-      toast("Kirim qilindi ✅");
+      toast("Kirim qilindi");
       closeModal();
       await loadInventoryView(inventoryState.page, inventoryState.search);
     } catch (err) {
@@ -558,7 +560,7 @@ async function deactivateEmployee(userId) {
 async function reactivateEmployee(userId) {
   try {
     await api(`/auth/users/${userId}/reactivate`, { method: "POST" });
-    toast("Xodim qayta faollashtirildi ✅");
+    toast("Xodim qayta faollashtirildi");
     await loadHrmsView();
   } catch (err) {
     toast(err.message, "error");
@@ -568,7 +570,7 @@ async function reactivateEmployee(userId) {
 document.getElementById("clockInBtn").addEventListener("click", async () => {
   try {
     await api("/hrms/shifts/clock-in", { method: "POST" });
-    toast("Ish boshlandi ✅");
+    toast("Ish boshlandi");
     await loadHrmsView();
   } catch (err) {
     toast(err.message, "error");
@@ -578,7 +580,7 @@ document.getElementById("clockInBtn").addEventListener("click", async () => {
 document.getElementById("clockOutBtn").addEventListener("click", async () => {
   try {
     await api("/hrms/shifts/clock-out", { method: "POST" });
-    toast("Ish tugatildi ✅");
+    toast("Ish tugatildi");
     await loadHrmsView();
   } catch (err) {
     toast(err.message, "error");
@@ -609,7 +611,7 @@ document.getElementById("openEmployeeModalBtn").addEventListener("click", () => 
           role: fd.get("role"),
         }),
       });
-      toast("Xodim qo'shildi ✅");
+      toast("Xodim qo'shildi");
       closeModal();
       await loadHrmsView();
     } catch (err) {
@@ -677,7 +679,7 @@ document.getElementById("openRoomModalBtn").addEventListener("click", () => {
           price_per_night: Number(fd.get("price_per_night")),
         }),
       });
-      toast("Xona qo'shildi ✅");
+      toast("Xona qo'shildi");
       closeModal();
       await loadPmsView();
     } catch (err) {
@@ -710,7 +712,7 @@ document.getElementById("openBookingModalBtn").addEventListener("click", async (
           nights: Number(fd.get("nights")),
         }),
       });
-      toast("Mehmon joylashtirildi ✅");
+      toast("Mehmon joylashtirildi");
       closeModal();
       await loadPmsView();
     } catch (err) {
@@ -722,7 +724,7 @@ document.getElementById("openBookingModalBtn").addEventListener("click", async (
 async function checkoutBooking(bookingId) {
   try {
     await api(`/pms/bookings/${bookingId}/checkout`, { method: "POST" });
-    toast("Mehmon chiqarildi, to'lov moliyaga yozildi ✅");
+    toast("Mehmon chiqarildi, to'lov moliyaga yozildi");
     await loadPmsView();
   } catch (err) {
     toast(err.message, "error");
