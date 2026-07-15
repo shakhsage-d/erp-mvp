@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, case
+from datetime import datetime, timedelta
 
 from app.db.session import get_db
 from app.core.tenant import get_current_company_id
@@ -67,3 +68,51 @@ def summary(
         "total_expense": expense,
         "net_profit": income - expense,
     }
+
+
+@router.get(
+    "/analytics/daily-sales",
+    response_model=list[schemas.DailySalesPoint],
+    summary="Kunlik savdo dinamikasi (grafik uchun)",
+)
+def daily_sales_analytics(
+    days: int = Query(default=30, ge=1, le=365, description="Necha kunlik tarix"),
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    _: None = Depends(require_permission("finance.view")),
+):
+    """
+    Har bir kun uchun umumiy kirim/chiqim — dashboard'da chiziqli
+    grafik chizish uchun mo'ljallangan. Kunlar bo'yicha guruhlangan.
+    """
+    since = datetime.utcnow() - timedelta(days=days)
+
+    rows = (
+        db.query(
+            func.date(models.Transaction.created_at).label("day"),
+            func.sum(case(
+                (models.Transaction.type == models.TransactionType.INCOME, models.Transaction.amount),
+                else_=0,
+            )).label("income"),
+            func.sum(case(
+                (models.Transaction.type == models.TransactionType.EXPENSE, models.Transaction.amount),
+                else_=0,
+            )).label("expense"),
+        )
+        .filter(
+            models.Transaction.company_id == company_id,
+            models.Transaction.created_at >= since,
+        )
+        .group_by("day")
+        .order_by("day")
+        .all()
+    )
+
+    return [
+        schemas.DailySalesPoint(
+            date=str(row.day),
+            total_income=float(row.income or 0),
+            total_expense=float(row.expense or 0),
+        )
+        for row in rows
+    ]

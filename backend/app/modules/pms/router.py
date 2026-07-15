@@ -183,3 +183,31 @@ def list_bookings(
     return db.query(models.Booking).filter(
         models.Booking.company_id == company_id,
     ).order_by(models.Booking.check_in.desc()).all()
+
+
+@router.get(
+    "/analytics/occupancy",
+    response_model=schemas.OccupancyStats,
+    summary="Xonalar to'lilik foizi",
+)
+def occupancy_analytics(
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    _: None = Depends(require_permission("pms.manage")),
+):
+    """Hozirgi holatdagi (real-time) to'lilik: nechta xonadan nechtasi band."""
+    total = db.query(models.Room).filter(
+        models.Room.company_id == company_id,
+        models.Room.deleted_at.is_(None),
+    ).count()
+
+    occupied = db.query(models.Room).filter(
+        models.Room.company_id == company_id,
+        models.Room.status == models.RoomStatus.OCCUPIED,
+    ).count()
+
+    rate = round((occupied / total * 100), 1) if total > 0 else 0.0
+
+    return schemas.OccupancyStats(
+        total_rooms=total, occupied_rooms=occupied, occupancy_rate=rate,
+    )

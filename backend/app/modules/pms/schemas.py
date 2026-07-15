@@ -37,3 +37,9 @@ class BookingOut(BaseModel):
     status: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class OccupancyStats(BaseModel):
+    total_rooms: int
+    occupied_rooms: int
+    occupancy_rate: float  # foizda, masalan 66.7

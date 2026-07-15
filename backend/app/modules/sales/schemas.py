@@ -21,3 +21,10 @@ class SaleOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TopProductItem(BaseModel):
+    product_id: int
+    product_name: str
+    total_quantity: float
+    total_revenue: float
