@@ -26,7 +26,7 @@ def test_sale_reduces_stock_and_creates_income(client):
     assert sale["total_amount"] == 5 * 12000
 
     # Ombor kamaydimi?
-    products = client.get("/inventory/products").json()
+    products = client.get("/inventory/products").json()["items"]
     assert products[0]["quantity"] == 95
 
     # Moliyaga kirim yozildimi?
@@ -45,7 +45,7 @@ def test_sale_fails_if_not_enough_stock(client):
     assert resp.status_code == 400
 
     # Muvaffaqiyatsiz urinishdan keyin ombor o'zgarmagan bo'lishi kerak
-    products = client.get("/inventory/products").json()
+    products = client.get("/inventory/products").json()["items"]
     assert products[0]["quantity"] == 3
 
     # Va moliyaga ham noto'g'ri kirim yozilmagan bo'lishi kerak
@@ -65,5 +65,5 @@ def test_sale_blocks_cross_tenant_product(client):
     assert resp.status_code == 404
 
     # 1-kompaniyaning ombori o'zgarmagan bo'lishi kerak
-    products = client.get("/inventory/products").json()
+    products = client.get("/inventory/products").json()["items"]
     assert products[0]["quantity"] == 50

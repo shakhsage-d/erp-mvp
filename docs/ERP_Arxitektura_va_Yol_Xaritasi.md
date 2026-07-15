@@ -56,7 +56,7 @@ erp-system/
 
 ## 3. Multi-tenancy qoidasi (hech qachon buzilmaydi)
 
-- Har bir biznes-jadvalda **majburiy** `company_id` ustuni bo'ladi (child-jadvallarda ham — `StockMovement`, `SaleItem` kabi).
+- Har bir biznes-jadvalda **majburiy** `company_id` MikroERPi bo'ladi (child-jadvallarda ham — `StockMovement`, `SaleItem` kabi).
 - Ma'lumot **yozilganda ham, o'qilganda ham** `company_id` filtri bo'lishi shart. Faqat yozishda bo'lib, o'qishda yo'qligi — xavfsizlik teshigi hisoblanadi.
 - Filtr har doim `core/tenant.py`dagi bitta markaziy funksiya (`get_current_company_id`) orqali olinadi, hech qachon routerlarda alohida-alohida yozilmaydi.
 - Hozircha (auth yo'q paytda) bu funksiya `1` qaytaradi. Auth qo'shilganda **faqat shu bitta funksiya** o'zgaradi, boshqa hech qaysi fayl o'zgarmaydi.
@@ -142,6 +142,20 @@ Yangi funksiya qo'shishdan oldin har safar so'rang:
 
 ---
 
-## 8. Keyingi darhol qadam
+## 9. ERP 2.0 — Professional darajaga chiqarish
 
-Bosqich 0'dan boshlanadi: repo tuzilishini ko'chirish, PostgreSQL'ga o'tish, `company_id` filtrlarini to'g'irlash. Bu tugagach, hujjatning shu bo'limi belgilanadi va Bosqich 1'ga o'tiladi.
+> Loyiha nomi: **MikroERP**. Bu bosqichning maqsadi — tizimni "ishlaydigan MVP"dan "haqiqiy sotiladigan mahsulot" darajasiga ko'tarish. Tartib: avval backend (har bir band alohida, testlar bilan), so'ng hozirgi oddiy frontend orqali sinash, YAKUNIDA to'liq UI/UX pardozi (alohida marketing sahifa + professional dashboard dizayni).
+
+### Backend backlog (ustuvorlik tartibida)
+
+1. **Qidiruv va sahifalash (pagination)** — mahsulotlar, tranzaksiyalar, xodimlar, bronlar ro'yxati cheksiz o'smasligi kerak
+2. **Xodimni tahrirlash/faolsizlantirish** — hozir faqat qo'shish bor, o'chirish/blokirovka yo'q
+3. **Audit-log ko'rish endpointi** — kim, qachon, nima o'zgartirgani (jadval allaqachon bor, endi API kerak)
+4. **Refresh token / logout** — hozir token 7 kun amal qiladi, muddati tugagach faqat qayta login. Xavfsizroq: qisqa umrli access token + refresh token
+5. **Hisobotlar (analytics)** — kunlik/haftalik savdo dinamikasi, eng ko'p sotilgan mahsulotlar, xona to'lilik foizi
+6. **CI/CD** — GitHub Actions orqali har bir push'da avtomatik `pytest` ishga tushirilishi
+7. **Rate limiting — foydalanuvchi bo'yicha** (hozir faqat IP bo'yicha)
+
+### Keyin — frontend UI/UX yakuniy pardozi
+- Alohida marketing/sotuv sahifasi (isbd.uz uslubida, lekin "MikroERP" o'z brendi bilan)
+- Dashboard: modal oynalar, toast bildirishnomalar, qidiruv/filtr, grafiklar, tahrirlash imkoniyati

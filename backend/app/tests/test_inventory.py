@@ -23,9 +23,9 @@ def test_create_and_list_product(client):
 
     resp = client.get("/inventory/products")
     assert resp.status_code == 200
-    products = resp.json()
-    assert len(products) == 1
-    assert products[0]["name"] == "Guruch"
+    body = resp.json()
+    assert body["total"] == 1
+    assert body["items"][0]["name"] == "Guruch"
 
 
 def test_stock_in_increases_quantity(client):
@@ -72,4 +72,5 @@ def test_stock_in_blocks_cross_tenant_access(client):
 
     # 2-kompaniya bu mahsulotni ro'yxatda ham ko'rmasligi kerak
     resp = client.get("/inventory/products", headers=other_headers)
-    assert resp.json() == []
+    assert resp.json()["items"] == []
+    assert resp.json()["total"] == 0

@@ -28,8 +28,8 @@ from app.modules.auth import models as auth_models  # noqa: F401,E402
 from app.modules.inventory import models as inventory_models  # noqa: F401,E402
 from app.modules.sales import models as sales_models  # noqa: F401,E402
 from app.modules.finance import models as finance_models  # noqa: F401,E402
-# Bosqich 3/4 da: from app.modules.hrms import models as hrms_models
-# Bosqich 3/4 da: from app.modules.pms import models as pms_models
+from app.modules.hrms import models as hrms_models  # noqa: F401,E402
+from app.modules.pms import models as pms_models  # noqa: F401,E402
 
 config = context.config
 config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL", ""))
