@@ -1,24 +1,24 @@
 // =========================================================
-// MikroERP frontend — auth (JWT) + har bir modul bilan ishlash
+// Ustun frontend — auth (JWT) + har bir modul bilan ishlash
 // =========================================================
 
 const API = window.APP_CONFIG.API_BASE;
 
 // ---------- Token va sessiya boshqaruvi ----------
 function saveSession(data) {
-  localStorage.setItem("mikroerp_token", data.access_token);
-  localStorage.setItem("mikroerp_company_name", data.company_name);
-  localStorage.setItem("mikroerp_role", data.role);
+  localStorage.setItem("ustun_token", data.access_token);
+  localStorage.setItem("ustun_company_name", data.company_name);
+  localStorage.setItem("ustun_role", data.role);
 }
 
-function getToken() { return localStorage.getItem("mikroerp_token"); }
-function getRole() { return localStorage.getItem("mikroerp_role"); }
-function getCompanyName() { return localStorage.getItem("mikroerp_company_name"); }
+function getToken() { return localStorage.getItem("ustun_token"); }
+function getRole() { return localStorage.getItem("ustun_role"); }
+function getCompanyName() { return localStorage.getItem("ustun_company_name"); }
 
 function clearSession() {
-  localStorage.removeItem("mikroerp_token");
-  localStorage.removeItem("mikroerp_company_name");
-  localStorage.removeItem("mikroerp_role");
+  localStorage.removeItem("ustun_token");
+  localStorage.removeItem("ustun_company_name");
+  localStorage.removeItem("ustun_role");
 }
 
 function isLoggedIn() { return !!getToken(); }
@@ -188,7 +188,11 @@ let saleCart = []; // {product_id, name, price, qty}
 let productsCache = [];
 
 async function loadSalesView() {
-  productsCache = await api("/inventory/products");
+  // ERP 2.0: backend endi sahifalab qaytaradi ({items, total, ...}).
+  // Hozircha to'liq sahifalash UI'si keyingi (UI/UX) bosqichda qo'shiladi —
+  // shu oraliqda page_size=100 bilan "deyarli barchasi"ni ko'rsatamiz.
+  const response = await api("/inventory/products?page_size=100");
+  productsCache = response.items;
   const select = document.getElementById("saleProductSelect");
   select.innerHTML = productsCache
     .map((p) => `<option value="${p.id}">${p.name} (qoldiq: ${p.quantity})</option>`)
@@ -253,7 +257,8 @@ document.getElementById("saleCheckoutBtn").addEventListener("click", async () =>
 // OMBOR
 // =========================================================
 async function loadInventoryView() {
-  const products = await api("/inventory/products");
+  const response = await api("/inventory/products?page_size=100");
+  const products = response.items;
   productsCache = products;
 
   const tbody = document.querySelector("#productsTable tbody");
@@ -322,7 +327,8 @@ async function loadFinanceView() {
   document.getElementById("statExpense").textContent = money(summary.total_expense);
   document.getElementById("statProfit").textContent = money(summary.net_profit);
 
-  const transactions = await api("/finance/transactions");
+  const transactionsResponse = await api("/finance/transactions?page_size=50");
+  const transactions = transactionsResponse.items;
   const tbody = document.querySelector("#transactionsTable tbody");
   tbody.innerHTML = transactions
     .map((t) => `
@@ -355,9 +361,41 @@ async function loadHrmsView() {
       const employees = await api("/auth/users");
       const empTbody = document.querySelector("#employeesTable tbody");
       empTbody.innerHTML = employees
-        .map((u) => `<tr><td>${u.full_name}</td><td>${u.phone}</td><td>${roleLabelText(u.role)}</td></tr>`)
+        .map((u) => `
+          <tr>
+            <td>${u.full_name}</td>
+            <td>${u.phone}</td>
+            <td>${roleLabelText(u.role)}</td>
+            <td><span class="status-pill ${u.is_active ? "status-available" : "status-checked_out"}">${u.is_active ? "Faol" : "Faolsiz"}</span></td>
+            <td>
+              ${u.role === "owner" ? "" : (
+                u.is_active
+                  ? `<button class="link-btn" onclick="deactivateEmployee(${u.id})">faolsizlantirish</button>`
+                  : `<button class="link-btn" onclick="reactivateEmployee(${u.id})">qayta faollashtirish</button>`
+              )}
+            </td>
+          </tr>`)
         .join("");
     } catch (_) { /* ruxsat yo'q bo'lsa jim o'tkazib yuboriladi */ }
+  }
+}
+
+async function deactivateEmployee(userId) {
+  if (!confirm("Bu xodimni faolsizlantirmoqchimisiz? U tizimga kira olmay qoladi.")) return;
+  try {
+    await api(`/auth/users/${userId}/deactivate`, { method: "POST" });
+    await loadHrmsView();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function reactivateEmployee(userId) {
+  try {
+    await api(`/auth/users/${userId}/reactivate`, { method: "POST" });
+    await loadHrmsView();
+  } catch (err) {
+    alert(err.message);
   }
 }
 

@@ -40,5 +40,15 @@ class EmployeeOut(BaseModel):
     full_name: str
     phone: str
     role: str
+    is_active: bool = True
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class EmployeeUpdateRequest(BaseModel):
+    """Barcha maydonlar ixtiyoriy — faqat o'zgartirilishi kerak bo'lganlari yuboriladi."""
+    full_name: str | None = Field(default=None, min_length=1, max_length=200)
+    phone: str | None = Field(default=None, min_length=5, max_length=20)
+    # Bu yerdan ham "owner" ATAYLAB chiqarib qoldirilgan — bu endpoint orqali
+    # birortaning ham egaga aylantirib bo'lmaydi.
+    role: Literal["cashier", "storekeeper", "receptionist"] | None = None

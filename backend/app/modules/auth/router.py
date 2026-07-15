@@ -12,11 +12,12 @@ bazasida `ensure_seeded()` orqali avtomatik tayyorlanadi.
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.db.session import get_db
 from app.core.security import hash_password, verify_password, create_access_token
-from app.core.exceptions import ConflictError, UnauthorizedError
-from app.core.tenant import get_current_company_id
+from app.core.exceptions import ConflictError, UnauthorizedError, ForbiddenError, NotFoundError
+from app.core.tenant import get_current_company_id, get_current_user_id
 from app.core.permissions import require_permission
 from app.core.logging_config import get_logger
 from app.core.rate_limit import limiter
@@ -164,10 +165,13 @@ def list_employees(
     company_id: int = Depends(get_current_company_id),
     _: None = Depends(require_permission("employees.manage")),
 ):
-    """Shu kompaniyaga tegishli barcha foydalanuvchilar (egasi + xodimlar)."""
+    """
+    Shu kompaniyaga tegishli barcha foydalanuvchilar (egasi + xodimlar).
+    Faolsizlantirilganlar ham ko'rsatiladi (`is_active: false` bilan) —
+    egasi ularni kerak bo'lsa qayta faollashtira olishi uchun.
+    """
     users = db.query(models.User).filter(
         models.User.company_id == company_id,
-        models.User.deleted_at.is_(None),
     ).all()
 
     role_names = {r.id: r.name for r in db.query(models.Role).all()}
@@ -176,6 +180,136 @@ def list_employees(
         schemas.EmployeeOut(
             id=u.id, full_name=u.full_name, phone=u.phone,
             role=role_names.get(u.role_id, "noma'lum"),
+            is_active=u.deleted_at is None,
         )
         for u in users
     ]
+
+
+@router.patch(
+    "/users/{user_id}",
+    response_model=schemas.EmployeeOut,
+    summary="Xodim ma'lumotlarini tahrirlash",
+)
+def update_employee(
+    user_id: int,
+    payload: schemas.EmployeeUpdateRequest,
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    _: None = Depends(require_permission("employees.manage")),
+):
+    """
+    Xodimning ismi, telefon raqami va/yoki lavozimini o'zgartiradi.
+    Faqat shu kompaniyaga tegishli, EGASI BO'LMAGAN foydalanuvchilarga
+    qo'llash mumkin (egani bu endpoint orqali o'zgartirib bo'lmaydi).
+    """
+    user = db.query(models.User).filter(
+        models.User.id == user_id,
+        models.User.company_id == company_id,
+    ).first()
+    if not user:
+        raise NotFoundError("Xodim topilmadi", extra={"user_id": user_id})
+
+    current_role = db.query(models.Role).filter(models.Role.id == user.role_id).first()
+    if current_role and current_role.name == "owner":
+        raise ForbiddenError("Kompaniya egasining ma'lumotlarini bu endpoint orqali o'zgartirib bo'lmaydi")
+
+    if payload.phone and payload.phone != user.phone:
+        existing = db.query(models.User).filter(
+            models.User.phone == payload.phone, models.User.id != user.id,
+        ).first()
+        if existing:
+            raise ConflictError("Bu telefon raqami boshqa foydalanuvchida band")
+        user.phone = payload.phone
+
+    if payload.full_name:
+        user.full_name = payload.full_name
+
+    if payload.role:
+        new_role = get_default_role(db, payload.role)
+        user.role_id = new_role.id
+
+    db.commit()
+    db.refresh(user)
+
+    role_name = db.query(models.Role).filter(models.Role.id == user.role_id).first().name
+    logger.info("Xodim tahrirlandi: company=%s user_id=%s", company_id, user.id)
+    return schemas.EmployeeOut(
+        id=user.id, full_name=user.full_name, phone=user.phone,
+        role=role_name, is_active=user.deleted_at is None,
+    )
+
+
+@router.post(
+    "/users/{user_id}/deactivate",
+    response_model=schemas.EmployeeOut,
+    summary="Xodimni faolsizlantirish",
+)
+def deactivate_employee(
+    user_id: int,
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    current_user_id: int = Depends(get_current_user_id),
+    _: None = Depends(require_permission("employees.manage")),
+):
+    """
+    Xodimni "o'chirmaydi" (ma'lumotlari, tarixi saqlanib qoladi — audit
+    uchun muhim), faqat tizimga kira olmaydigan qiladi (`deleted_at`
+    belgilanadi). Kerak bo'lsa `/reactivate` orqali qaytarish mumkin.
+
+    Ikkita himoya: o'zingizni faolsizlantira olmaysiz, va kompaniya
+    egasini faolsizlantirib bo'lmaydi.
+    """
+    if user_id == current_user_id:
+        raise ForbiddenError("O'zingizni faolsizlantira olmaysiz")
+
+    user = db.query(models.User).filter(
+        models.User.id == user_id,
+        models.User.company_id == company_id,
+    ).first()
+    if not user:
+        raise NotFoundError("Xodim topilmadi", extra={"user_id": user_id})
+
+    role = db.query(models.Role).filter(models.Role.id == user.role_id).first()
+    if role and role.name == "owner":
+        raise ForbiddenError("Kompaniya egasini faolsizlantirib bo'lmaydi")
+
+    user.deleted_at = datetime.utcnow()
+    db.commit()
+    db.refresh(user)
+
+    logger.info("Xodim faolsizlantirildi: company=%s user_id=%s", company_id, user.id)
+    return schemas.EmployeeOut(
+        id=user.id, full_name=user.full_name, phone=user.phone,
+        role=role.name if role else "noma'lum", is_active=False,
+    )
+
+
+@router.post(
+    "/users/{user_id}/reactivate",
+    response_model=schemas.EmployeeOut,
+    summary="Faolsizlantirilgan xodimni qayta faollashtirish",
+)
+def reactivate_employee(
+    user_id: int,
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    _: None = Depends(require_permission("employees.manage")),
+):
+    user = db.query(models.User).filter(
+        models.User.id == user_id,
+        models.User.company_id == company_id,
+    ).first()
+    if not user:
+        raise NotFoundError("Xodim topilmadi", extra={"user_id": user_id})
+
+    user.deleted_at = None
+    db.commit()
+    db.refresh(user)
+
+    role = db.query(models.Role).filter(models.Role.id == user.role_id).first()
+    logger.info("Xodim qayta faollashtirildi: company=%s user_id=%s", company_id, user.id)
+    return schemas.EmployeeOut(
+        id=user.id, full_name=user.full_name, phone=user.phone,
+        role=role.name if role else "noma'lum", is_active=True,
+    )
