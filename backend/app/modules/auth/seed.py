@@ -27,6 +27,7 @@ PERMISSION_CATALOG = {
     "employees.manage": "Xodim qo'shish va ro'yxatini ko'rish",
     "hrms.view_all": "Barcha xodimlarning ish vaqti (smena) tarixini ko'rish",
     "pms.manage": "Mehmonxona xonalari va bronlarni boshqarish",
+    "audit.view": "Kompaniyadagi muhim amallar tarixini ko'rish",
 }
 
 # --- Standart lavozimlar va ularning ruxsatlari ---

@@ -34,6 +34,7 @@ from app.modules.sales import models as sales_models  # noqa: F401,E402
 from app.modules.finance import models as finance_models  # noqa: F401,E402
 from app.modules.hrms import models as hrms_models  # noqa: F401,E402
 from app.modules.pms import models as pms_models  # noqa: F401,E402
+from app.modules.audit import models as audit_models  # noqa: F401,E402
 
 from app.modules.inventory.router import router as inventory_router  # noqa: E402
 from app.modules.sales.router import router as sales_router  # noqa: E402
@@ -41,6 +42,7 @@ from app.modules.finance.router import router as finance_router  # noqa: E402
 from app.modules.auth.router import router as auth_router  # noqa: E402
 from app.modules.hrms.router import router as hrms_router  # noqa: E402
 from app.modules.pms.router import router as pms_router  # noqa: E402
+from app.modules.audit.router import router as audit_router  # noqa: E402
 
 # Ilova birinchi marta ishga tushganda, kerakli jadvallarni avtomatik yaratadi.
 # (Bosqich 0 dan keyin bu o'rniga Alembic migratsiyalari ishlatiladi.)
@@ -82,6 +84,10 @@ app = FastAPI(
         {
             "name": "PMS - Mehmonxona",
             "description": "Xonalar va bronlar. Checkout FMS'ga avtomatik kirim yozadi.",
+        },
+        {
+            "name": "Audit - Tarix",
+            "description": "Kompaniyadagi muhim amallar tarixi (kim, qachon, nima qilgani).",
         },
     ],
 )
@@ -162,6 +168,7 @@ app.include_router(sales_router)
 app.include_router(finance_router)
 app.include_router(hrms_router)
 app.include_router(pms_router)
+app.include_router(audit_router)
 
 
 @app.get("/")

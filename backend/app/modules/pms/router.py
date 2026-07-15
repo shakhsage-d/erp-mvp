@@ -16,10 +16,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.core.tenant import get_current_company_id
+from app.core.tenant import get_current_company_id, get_current_user_id
 from app.core.permissions import require_permission
 from app.core.exceptions import NotFoundError, ConflictError
 from app.core.logging_config import get_logger
+from app.core.audit_log import record_audit
 from app.modules.pms import models, schemas
 from app.modules.finance import models as finance_models
 
@@ -119,6 +120,7 @@ def checkout_booking(
     booking_id: int,
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
+    actor_id: int = Depends(get_current_user_id),
     _: None = Depends(require_permission("pms.manage")),
 ):
     """
@@ -151,6 +153,12 @@ def checkout_booking(
         amount=booking.total_price,
         source=f"Booking #{booking.id} (xona {room.room_number if room else '?'})",
     ))
+
+    record_audit(
+        db, company_id, actor_id, "booking.checkout",
+        entity_type="booking", entity_id=booking.id,
+        details=f"{booking.guest_name}, summa={booking.total_price}",
+    )
 
     db.commit()
     db.refresh(booking)

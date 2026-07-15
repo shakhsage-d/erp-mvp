@@ -16,11 +16,12 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.core.tenant import get_current_company_id
+from app.core.tenant import get_current_company_id, get_current_user_id
 from app.core.permissions import require_permission
 from app.core.exceptions import NotFoundError, InsufficientStockError, EmptyRequestError
 from app.core.logging_config import get_logger
 from app.core.rate_limit import limiter
+from app.core.audit_log import record_audit
 from app.modules.sales import models as sales_models, schemas
 from app.modules.inventory import models as inventory_models
 from app.modules.finance import models as finance_models
@@ -40,6 +41,7 @@ def create_sale(
     sale_request: schemas.SaleCreate,
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
+    actor_id: int = Depends(get_current_user_id),
     _: None = Depends(require_permission("sales.create")),
 ):
     """
@@ -128,6 +130,12 @@ def create_sale(
         amount=total_amount,
         source=f"Sale #{sale.id}",
     ))
+
+    record_audit(
+        db, company_id, actor_id, "sale.create",
+        entity_type="sale", entity_id=sale.id,
+        details=f"summa={total_amount}, {len(sale_request.items)} ta mahsulot",
+    )
 
     db.commit()
     db.refresh(sale)

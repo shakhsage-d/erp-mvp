@@ -30,6 +30,7 @@ from app.modules.sales import models as sales_models  # noqa: F401,E402
 from app.modules.finance import models as finance_models  # noqa: F401,E402
 from app.modules.hrms import models as hrms_models  # noqa: F401,E402
 from app.modules.pms import models as pms_models  # noqa: F401,E402
+from app.modules.audit import models as audit_models  # noqa: F401,E402
 
 config = context.config
 config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL", ""))

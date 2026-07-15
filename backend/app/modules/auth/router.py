@@ -19,6 +19,7 @@ from app.core.security import hash_password, verify_password, create_access_toke
 from app.core.exceptions import ConflictError, UnauthorizedError, ForbiddenError, NotFoundError
 from app.core.tenant import get_current_company_id, get_current_user_id
 from app.core.permissions import require_permission
+from app.core.audit_log import record_audit
 from app.core.logging_config import get_logger
 from app.core.rate_limit import limiter
 from app.modules.auth import models, schemas
@@ -123,6 +124,7 @@ def create_employee(
     payload: schemas.EmployeeCreateRequest,
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
+    actor_id: int = Depends(get_current_user_id),
     _: None = Depends(require_permission("employees.manage")),
 ):
     """
@@ -145,6 +147,14 @@ def create_employee(
         role_id=role.id,
     )
     db.add(user)
+    db.flush()  # user.id ni audit yozuvi uchun olish
+
+    record_audit(
+        db, company_id, actor_id, "employee.create",
+        entity_type="user", entity_id=user.id,
+        details=f"{user.full_name} ({role.name}) qo'shildi",
+    )
+
     db.commit()
     db.refresh(user)
 
@@ -196,6 +206,7 @@ def update_employee(
     payload: schemas.EmployeeUpdateRequest,
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
+    actor_id: int = Depends(get_current_user_id),
     _: None = Depends(require_permission("employees.manage")),
 ):
     """
@@ -228,6 +239,12 @@ def update_employee(
     if payload.role:
         new_role = get_default_role(db, payload.role)
         user.role_id = new_role.id
+
+    record_audit(
+        db, company_id, actor_id, "employee.update",
+        entity_type="user", entity_id=user.id,
+        details=f"{user.full_name} ma'lumotlari yangilandi",
+    )
 
     db.commit()
     db.refresh(user)
@@ -275,6 +292,13 @@ def deactivate_employee(
         raise ForbiddenError("Kompaniya egasini faolsizlantirib bo'lmaydi")
 
     user.deleted_at = datetime.utcnow()
+
+    record_audit(
+        db, company_id, current_user_id, "employee.deactivate",
+        entity_type="user", entity_id=user.id,
+        details=f"{user.full_name} faolsizlantirildi",
+    )
+
     db.commit()
     db.refresh(user)
 
@@ -294,6 +318,7 @@ def reactivate_employee(
     user_id: int,
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
+    actor_id: int = Depends(get_current_user_id),
     _: None = Depends(require_permission("employees.manage")),
 ):
     user = db.query(models.User).filter(
@@ -304,6 +329,13 @@ def reactivate_employee(
         raise NotFoundError("Xodim topilmadi", extra={"user_id": user_id})
 
     user.deleted_at = None
+
+    record_audit(
+        db, company_id, actor_id, "employee.reactivate",
+        entity_type="user", entity_id=user.id,
+        details=f"{user.full_name} qayta faollashtirildi",
+    )
+
     db.commit()
     db.refresh(user)
 
