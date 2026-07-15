@@ -1,4 +1,4 @@
-# MikroERP
+# Ustun
 
 Kichik do'kon, kafe va mehmonxonalar uchun WMS + FMS ERP tizimi. Arxitektura va
 rivojlanish rejasi uchun qarang: [`docs/ERP_Arxitektura_va_Yol_Xaritasi.md`](docs/ERP_Arxitektura_va_Yol_Xaritasi.md)
@@ -42,7 +42,11 @@ venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env
 ```
-`.env` faylini oching va `DATABASE_URL`ni Supabase manzilingiz bilan almashtiring, so'ng:
+`.env` faylini oching va `DATABASE_URL`ni Supabase manzilingiz bilan almashtiring, so'ng **MAJBURIY** (baza jadvallarini yaratish uchun — endi bu avtomatik bo'lmaydi, faqat Alembic orqali):
+```powershell
+alembic upgrade head
+```
+va nihoyat:
 ```powershell
 uvicorn app.main:app --reload
 ```

@@ -19,7 +19,7 @@ from app.core.logging_config import setup_logging, get_logger
 from app.core.error_handlers import register_error_handlers
 from app.core.rate_limit import limiter
 from app.core.security import decode_access_token
-from app.db.session import Base, engine, SessionLocal
+from app.db.session import SessionLocal
 
 # Logging ENG BIRINCHI sozlanadi — shundan keyin import qilinadigan
 # hech qanday modul logsiz qolmaydi.
@@ -44,9 +44,15 @@ from app.modules.hrms.router import router as hrms_router  # noqa: E402
 from app.modules.pms.router import router as pms_router  # noqa: E402
 from app.modules.audit.router import router as audit_router  # noqa: E402
 
-# Ilova birinchi marta ishga tushganda, kerakli jadvallarni avtomatik yaratadi.
-# (Bosqich 0 dan keyin bu o'rniga Alembic migratsiyalari ishlatiladi.)
-Base.metadata.create_all(bind=engine)
+# MUHIM: Base.metadata.create_all(bind=engine) ATAYLAB OLIB TASHLANDI.
+# Endi baza sxemasining YAGONA manbai — Alembic migratsiyalari
+# (alembic upgrade head). Agar bu qator qolib ketsa, ikkita mexanizm
+# (avtomatik yaratish va Alembic) bir-biriga qarshi kelib, "jadval
+# allaqachon mavjud" kabi xatolarga olib keladi (aynan shu muammoga
+# duch keldik). Yangi muhitda (masalan yangi Render/Supabase) ishga
+# tushirishda, birinchi qadam sifatida albatta:
+#     alembic upgrade head
+# ishga tushirilishi kerak — bu haqida README'da ham yozilgan.
 
 app = FastAPI(
     title=settings.APP_NAME,
