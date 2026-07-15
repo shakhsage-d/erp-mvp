@@ -1,4 +1,4 @@
-# MikroERP — Arxitektura Ramkasi va Rivojlanish Yo'l Xaritasi
+# mikroerp — Arxitektura Ramkasi va Rivojlanish Yo'l Xaritasi
 
 *Bu hujjat — loyihaning "yagona haqiqat manbai" (single source of truth). Har bir yangi funksiya, modul yoki texnik qaror shu ramka asosida tekshiriladi. Demo emas — bu hozirdan boshlab asta-sekin haqiqiy mahsulotga aylanadigan tizimning konstitutsiyasi.*
 
@@ -56,7 +56,7 @@ erp-system/
 
 ## 3. Multi-tenancy qoidasi (hech qachon buzilmaydi)
 
-- Har bir biznes-jadvalda **majburiy** `company_id` MikroERPi bo'ladi (child-jadvallarda ham — `StockMovement`, `SaleItem` kabi).
+- Har bir biznes-jadvalda **majburiy** `company_id` mikroerpi bo'ladi (child-jadvallarda ham — `StockMovement`, `SaleItem` kabi).
 - Ma'lumot **yozilganda ham, o'qilganda ham** `company_id` filtri bo'lishi shart. Faqat yozishda bo'lib, o'qishda yo'qligi — xavfsizlik teshigi hisoblanadi.
 - Filtr har doim `core/tenant.py`dagi bitta markaziy funksiya (`get_current_company_id`) orqali olinadi, hech qachon routerlarda alohida-alohida yozilmaydi.
 - Hozircha (auth yo'q paytda) bu funksiya `1` qaytaradi. Auth qo'shilganda **faqat shu bitta funksiya** o'zgaradi, boshqa hech qaysi fayl o'zgarmaydi.
@@ -144,18 +144,18 @@ Yangi funksiya qo'shishdan oldin har safar so'rang:
 
 ## 9. ERP 2.0 — Professional darajaga chiqarish
 
-> Loyiha nomi: **MikroERP**. Bu bosqichning maqsadi — tizimni "ishlaydigan MVP"dan "haqiqiy sotiladigan mahsulot" darajasiga ko'tarish. Tartib: avval backend (har bir band alohida, testlar bilan), so'ng hozirgi oddiy frontend orqali sinash, YAKUNIDA to'liq UI/UX pardozi (alohida marketing sahifa + professional dashboard dizayni).
+> Loyiha nomi: **mikroerp**. Bu bosqichning maqsadi — tizimni "ishlaydigan MVP"dan "haqiqiy sotiladigan mahsulot" darajasiga ko'tarish. Tartib: avval backend (har bir band alohida, testlar bilan), so'ng hozirgi oddiy frontend orqali sinash, YAKUNIDA to'liq UI/UX pardozi (alohida marketing sahifa + professional dashboard dizayni).
 
-### Backend backlog (ustuvorlik tartibida)
+### Backend backlog — ✅ TO'LIQ YAKUNLANDI (81 ta test)
 
-1. **Qidiruv va sahifalash (pagination)** — mahsulotlar, tranzaksiyalar, xodimlar, bronlar ro'yxati cheksiz o'smasligi kerak
-2. **Xodimni tahrirlash/faolsizlantirish** — hozir faqat qo'shish bor, o'chirish/blokirovka yo'q
-3. **Audit-log ko'rish endpointi** — kim, qachon, nima o'zgartirgani (jadval allaqachon bor, endi API kerak)
-4. **Refresh token / logout** — hozir token 7 kun amal qiladi, muddati tugagach faqat qayta login. Xavfsizroq: qisqa umrli access token + refresh token
-5. **Hisobotlar (analytics)** — kunlik/haftalik savdo dinamikasi, eng ko'p sotilgan mahsulotlar, xona to'lilik foizi
-6. **CI/CD** — GitHub Actions orqali har bir push'da avtomatik `pytest` ishga tushirilishi
-7. **Rate limiting — foydalanuvchi bo'yicha** (hozir faqat IP bo'yicha)
+1. ✅ **Qidiruv va sahifalash** — mahsulotlar, tranzaksiyalar uchun `page`/`page_size`/`search`
+2. ✅ **Xodimni tahrirlash/faolsizlantirish** — `PATCH /auth/users/{id}`, deactivate/reactivate
+3. ✅ **Audit-log** — `app/modules/audit/`, muhim amallar avtomatik yoziladi
+4. ✅ **Refresh token / logout** — access 30 daqiqa, refresh 30 kun, rotation bilan
+5. ✅ **Hisobotlar (analytics)** — kunlik savdo, top mahsulotlar, mehmonxona to'lilik foizi
+6. ✅ **CI/CD** — GitHub Actions, har push'da avtomatik `pytest`
+7. ✅ **Rate limiting — foydalanuvchi bo'yicha** — endi IP emas, foydalanuvchi ID bo'yicha
 
 ### Keyin — frontend UI/UX yakuniy pardozi
-- Alohida marketing/sotuv sahifasi (isbd.uz uslubida, lekin "MikroERP" o'z brendi bilan)
+- Alohida marketing/sotuv sahifasi (isbd.uz uslubida, lekin "mikroerp" o'z brendi bilan)
 - Dashboard: modal oynalar, toast bildirishnomalar, qidiruv/filtr, grafiklar, tahrirlash imkoniyati
