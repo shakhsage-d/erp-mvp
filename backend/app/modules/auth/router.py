@@ -245,6 +245,7 @@ def create_employee(
         phone=payload.phone,
         hashed_password=hash_password(payload.password),
         role_id=role.id,
+        hourly_rate=payload.hourly_rate,
     )
     db.add(user)
     db.flush()  # user.id ni audit yozuvi uchun olish
@@ -262,7 +263,10 @@ def create_employee(
         "Yangi xodim qo'shildi: company=%s user_id=%s role=%s",
         company_id, user.id, role.name,
     )
-    return schemas.EmployeeOut(id=user.id, full_name=user.full_name, phone=user.phone, role=role.name)
+    return schemas.EmployeeOut(
+        id=user.id, full_name=user.full_name, phone=user.phone,
+        role=role.name, hourly_rate=user.hourly_rate,
+    )
 
 
 @router.get(
@@ -291,6 +295,7 @@ def list_employees(
             id=u.id, full_name=u.full_name, phone=u.phone,
             role=role_names.get(u.role_id, "noma'lum"),
             is_active=u.deleted_at is None,
+            hourly_rate=u.hourly_rate,
         )
         for u in users
     ]
@@ -340,6 +345,9 @@ def update_employee(
         new_role = get_default_role(db, payload.role)
         user.role_id = new_role.id
 
+    if payload.hourly_rate is not None:
+        user.hourly_rate = payload.hourly_rate
+
     record_audit(
         db, company_id, actor_id, "employee.update",
         entity_type="user", entity_id=user.id,
@@ -353,7 +361,7 @@ def update_employee(
     logger.info("Xodim tahrirlandi: company=%s user_id=%s", company_id, user.id)
     return schemas.EmployeeOut(
         id=user.id, full_name=user.full_name, phone=user.phone,
-        role=role_name, is_active=user.deleted_at is None,
+        role=role_name, is_active=user.deleted_at is None, hourly_rate=user.hourly_rate,
     )
 
 
@@ -405,7 +413,7 @@ def deactivate_employee(
     logger.info("Xodim faolsizlantirildi: company=%s user_id=%s", company_id, user.id)
     return schemas.EmployeeOut(
         id=user.id, full_name=user.full_name, phone=user.phone,
-        role=role.name if role else "noma'lum", is_active=False,
+        role=role.name if role else "noma'lum", is_active=False, hourly_rate=user.hourly_rate,
     )
 
 
@@ -443,7 +451,7 @@ def reactivate_employee(
     logger.info("Xodim qayta faollashtirildi: company=%s user_id=%s", company_id, user.id)
     return schemas.EmployeeOut(
         id=user.id, full_name=user.full_name, phone=user.phone,
-        role=role.name if role else "noma'lum", is_active=True,
+        role=role.name if role else "noma'lum", is_active=True, hourly_rate=user.hourly_rate,
     )
 
 

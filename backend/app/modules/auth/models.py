@@ -26,7 +26,7 @@ FAQAT yangi CRUD endpointlar qo'shiladi — bu jadval tuzilishi va
 tekshiruv mexanizmi (`core/permissions.py`) o'ZGARMAYDI.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, UniqueConstraint, Float
 from datetime import datetime
 
 from app.db.session import Base
@@ -96,6 +96,7 @@ class User(Base):
     phone = Column(String, unique=True, index=True)
     hashed_password = Column(String, nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
+    hourly_rate = Column(Float, default=0.0, nullable=False)  # ish haqi hisoblash uchun (so'm/soat)
     created_at = Column(DateTime, default=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True)
 

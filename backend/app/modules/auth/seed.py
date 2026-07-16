@@ -27,6 +27,7 @@ PERMISSION_CATALOG = {
     "finance.manage": "Qo'lda xarajat (chiqim) qo'shish",
     "employees.manage": "Xodim qo'shish va ro'yxatini ko'rish",
     "hrms.view_all": "Barcha xodimlarning ish vaqti (smena) tarixini ko'rish",
+    "hrms.manage": "Ish haqi stavkasini belgilash va hisoblash",
     "pms.manage": "Mehmonxona xonalari va bronlarni boshqarish",
     "audit.view": "Kompaniyadagi muhim amallar tarixini ko'rish",
     "company.manage": "Kompaniya profilini tahrirlash",

@@ -22,7 +22,10 @@ from app.core.tenant import get_current_company_id, get_current_user_id
 from app.core.permissions import require_permission
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.logging_config import get_logger
+from app.core.audit_log import record_audit
 from app.modules.hrms import models, schemas
+from app.modules.auth import models as auth_models
+from app.modules.finance import models as finance_models
 
 router = APIRouter(prefix="/hrms", tags=["HRMS - Xodimlar"])
 logger = get_logger(__name__)
@@ -118,3 +121,77 @@ def all_shifts(
     return db.query(models.Shift).filter(
         models.Shift.company_id == company_id,
     ).order_by(models.Shift.clock_in.desc()).all()
+
+
+@router.post(
+    "/payroll/pay/{user_id}",
+    response_model=schemas.PayrollResult,
+    summary="Ish haqini hisoblash va to'lash (HRMS + FMS integratsiyasi)",
+)
+def pay_employee(
+    user_id: int,
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    actor_id: int = Depends(get_current_user_id),
+    _: None = Depends(require_permission("hrms.manage")),
+):
+    """
+    Xodimning hali TO'LANMAGAN, yopilgan (clock_out mavjud) barcha
+    smenalarini yig'ib, `hourly_rate` bo'yicha ish haqini hisoblaydi,
+    natijani bitta amalda:
+      1) FMS'ga chiqim (Transaction) sifatida yozadi
+      2) Shu smenalarni "to'landi" deb belgilaydi (qayta hisoblanmasligi uchun)
+
+    Bu — xuddi Savdo (WMS+FMS) va Checkout (PMS+FMS) kabi, HRMS'ni
+    FMS bilan chuqur bog'laydigan integratsiya nuqtasi.
+    """
+    user = db.query(auth_models.User).filter(
+        auth_models.User.id == user_id,
+        auth_models.User.company_id == company_id,
+    ).first()
+    if not user:
+        raise NotFoundError("Xodim topilmadi", extra={"user_id": user_id})
+
+    unpaid_shifts = db.query(models.Shift).filter(
+        models.Shift.user_id == user_id,
+        models.Shift.company_id == company_id,
+        models.Shift.clock_out.isnot(None),
+        models.Shift.is_paid.is_(False),
+    ).all()
+
+    if not unpaid_shifts:
+        raise ConflictError("Bu xodim uchun to'lanmagan, yopilgan smena topilmadi")
+
+    total_hours = sum(s.duration_hours or 0 for s in unpaid_shifts)
+    total_amount = round(total_hours * user.hourly_rate, 2)
+
+    for shift in unpaid_shifts:
+        shift.is_paid = True
+
+    if total_amount > 0:
+        db.add(finance_models.Transaction(
+            company_id=company_id,
+            type=finance_models.TransactionType.EXPENSE,
+            amount=total_amount,
+            source=f"Ish haqi: {user.full_name} ({total_hours} soat)",
+        ))
+
+    record_audit(
+        db, company_id, actor_id, "payroll.pay",
+        entity_type="user", entity_id=user.id,
+        details=f"{user.full_name}: {total_hours} soat, {total_amount} so'm",
+    )
+
+    db.commit()
+
+    logger.info(
+        "Ish haqi to'landi: company=%s user_id=%s soat=%s summa=%s",
+        company_id, user_id, total_hours, total_amount,
+    )
+    return schemas.PayrollResult(
+        user_id=user_id,
+        shifts_paid=len(unpaid_shifts),
+        total_hours=total_hours,
+        hourly_rate=user.hourly_rate,
+        total_amount=total_amount,
+    )

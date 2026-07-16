@@ -10,7 +10,7 @@ User sifatida mavjud — HRMS uni "qayta yaratmaydi", faqat ish vaqti
 ma'lumotini qo'shadi).
 """
 
-from sqlalchemy import Column, Integer, DateTime, ForeignKey, Float
+from sqlalchemy import Column, Integer, DateTime, ForeignKey, Float, Boolean
 from datetime import datetime
 
 from app.db.session import Base
@@ -30,3 +30,7 @@ class Shift(Base):
     # Smena yopilganda avtomatik hisoblanadi (soat, kasr bilan) — hisobotlar
     # uchun har safar qayta hisoblab o'tirmaslik uchun saqlab qo'yiladi.
     duration_hours = Column(Float, nullable=True)
+
+    # Ish haqi hisoblanganda True bo'ladi — bir smena uchun ikki marta
+    # to'lov qilinmasligi uchun (HRMS<->FMS integratsiyasi).
+    is_paid = Column(Boolean, default=False, nullable=False)

@@ -813,11 +813,13 @@ async function loadHrmsView() {
             <td>${u.full_name}</td>
             <td>${u.phone}</td>
             <td>${roleLabelText(u.role)}</td>
+            <td class="mono">${u.role === "owner" ? "-" : money(u.hourly_rate) + " so'm/soat"}</td>
             <td><span class="status-pill ${u.is_active ? "status-available" : "status-checked_out"}">${u.is_active ? "Faol" : "Faolsiz"}</span></td>
-            <td>
+            <td style="display:flex; gap:10px;">
               ${u.role === "owner" ? "" : (
                 u.is_active
-                  ? `<button class="link-btn danger" onclick="deactivateEmployee(${u.id})">faolsizlantirish</button>`
+                  ? `<button class="link-btn" onclick="payEmployee(${u.id})">ish haqini to'lash</button>
+                     <button class="link-btn danger" onclick="deactivateEmployee(${u.id})">faolsizlantirish</button>`
                   : `<button class="link-btn" onclick="reactivateEmployee(${u.id})">qayta faollashtirish</button>`
               )}
             </td>
@@ -842,6 +844,17 @@ async function reactivateEmployee(userId) {
   try {
     await api(`/auth/users/${userId}/reactivate`, { method: "POST" });
     toast("Xodim qayta faollashtirildi");
+    await loadHrmsView();
+  } catch (err) {
+    toast(err.message, "error");
+  }
+}
+
+async function payEmployee(userId) {
+  if (!confirm("Bu xodimning barcha to'lanmagan smenalari uchun ish haqi hisoblanadi va moliyaga chiqim sifatida yoziladi. Davom etamizmi?")) return;
+  try {
+    const result = await api(`/hrms/payroll/pay/${userId}`, { method: "POST" });
+    toast(`To'landi: ${money(result.total_amount)} so'm (${result.total_hours} soat)`);
     await loadHrmsView();
   } catch (err) {
     toast(err.message, "error");
@@ -880,6 +893,9 @@ document.getElementById("openEmployeeModalBtn").addEventListener("click", () => 
         <option value="receptionist">Resepshin (mehmonxona)</option>
       </select>
     </label>
+    <label>Soatlik stavka (ish haqi hisoblash uchun, ixtiyoriy)
+      <input type="number" name="hourly_rate" min="0" value="0" />
+    </label>
   `, async (form) => {
     const fd = new FormData(form);
     try {
@@ -890,6 +906,7 @@ document.getElementById("openEmployeeModalBtn").addEventListener("click", () => 
           phone: fd.get("phone").trim(),
           password: fd.get("password"),
           role: fd.get("role"),
+          hourly_rate: Number(fd.get("hourly_rate")) || 0,
         }),
       });
       toast("Xodim qo'shildi");

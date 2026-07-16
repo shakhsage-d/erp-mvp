@@ -48,6 +48,7 @@ class EmployeeCreateRequest(BaseModel):
     # bosqichida) bu maydon kompaniyaning o'z maxsus lavozimlaridan
     # birini ham qabul qiladigan bo'ladi (masalan role_id orqali).
     role: Literal["cashier", "storekeeper", "receptionist"]
+    hourly_rate: float = Field(default=0.0, ge=0, description="Ish haqi hisoblash uchun, so'm/soat")
 
 
 class EmployeeOut(BaseModel):
@@ -56,6 +57,7 @@ class EmployeeOut(BaseModel):
     phone: str
     role: str
     is_active: bool = True
+    hourly_rate: float = 0.0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -82,3 +84,4 @@ class EmployeeUpdateRequest(BaseModel):
     # Bu yerdan ham "owner" ATAYLAB chiqarib qoldirilgan — bu endpoint orqali
     # birortaning ham egaga aylantirib bo'lmaydi.
     role: Literal["cashier", "storekeeper", "receptionist"] | None = None
+    hourly_rate: float | None = Field(default=None, ge=0)
