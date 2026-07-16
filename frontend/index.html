@@ -414,12 +414,15 @@
         <div class="card" id="employeesCard" data-role-gate="employees">
           <div class="card-header">
             <h3>Jamoa a'zolari</h3>
-            <button class="btn-icon" id="openEmployeeModalBtn" title="Xodim qo'shish">
-              <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button id="bulkDeactivateBtn" class="btn-ghost hidden" style="color:var(--danger); border-color:var(--danger);">Tanlanganlarni faolsizlantirish</button>
+              <button class="btn-icon" id="openEmployeeModalBtn" title="Xodim qo'shish">
+                <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+            </div>
           </div>
           <table class="data-table" id="employeesTable">
-            <thead><tr><th>F.I.Sh.</th><th>Telefon</th><th>Lavozim</th><th>Soatlik stavka</th><th>Holati</th><th></th></tr></thead>
+            <thead><tr><th><input type="checkbox" id="employeeSelectAll" /></th><th>F.I.Sh.</th><th>Telefon</th><th>Lavozim</th><th>Soatlik stavka</th><th>Holati</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>

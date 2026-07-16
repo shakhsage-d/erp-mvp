@@ -86,3 +86,12 @@ class EmployeeUpdateRequest(BaseModel):
     role: Literal["cashier", "storekeeper", "receptionist"] | None = None
     custom_role_id: int | None = Field(default=None, description="Maxsus (o'zi yaratgan) lavozim ID'si")
     hourly_rate: float | None = Field(default=None, ge=0)
+
+
+class BulkDeactivateRequest(BaseModel):
+    user_ids: list[int] = Field(..., min_length=1, max_length=100)
+
+
+class BulkDeactivateResult(BaseModel):
+    deactivated_count: int
+    skipped_ids: list[int]

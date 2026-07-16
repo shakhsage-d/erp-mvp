@@ -384,6 +384,65 @@ def update_employee(
 
 
 @router.post(
+    "/users/bulk-deactivate",
+    response_model=schemas.BulkDeactivateResult,
+    summary="Bir nechta xodimni birga faolsizlantirish",
+)
+def bulk_deactivate_employees(
+    payload: schemas.BulkDeactivateRequest,
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    current_user_id: int = Depends(get_current_user_id),
+    _: None = Depends(require_permission("employees.manage")),
+):
+    """
+    Bir nechta xodimni bir vaqtda faolsizlantiradi (masalan, jamoa
+    kichraytirilganda). Har biriga xuddi yakka faolsizlantirish bilan
+    bir xil himoya qo'llaniladi: o'zini va egasini faolsizlantirib
+    bo'lmaydi — bunday ID'lar shunchaki "o'tkazib yuboriladi"
+    (`skipped_ids`), butun so'rov bekor qilinmaydi.
+    """
+    deactivated_count = 0
+    skipped_ids = []
+
+    for user_id in payload.user_ids:
+        if user_id == current_user_id:
+            skipped_ids.append(user_id)
+            continue
+
+        user = db.query(models.User).filter(
+            models.User.id == user_id,
+            models.User.company_id == company_id,
+            models.User.deleted_at.is_(None),
+        ).first()
+        if not user:
+            skipped_ids.append(user_id)
+            continue
+
+        role = db.query(models.Role).filter(models.Role.id == user.role_id).first()
+        if role and role.name == "owner":
+            skipped_ids.append(user_id)
+            continue
+
+        user.deleted_at = datetime.utcnow()
+        deactivated_count += 1
+
+    if deactivated_count > 0:
+        record_audit(
+            db, company_id, current_user_id, "employee.bulk_deactivate",
+            entity_type="user", entity_id=None,
+            details=f"{deactivated_count} ta xodim faolsizlantirildi",
+        )
+        db.commit()
+
+    logger.info(
+        "Ommaviy faolsizlantirish: company=%s deactivated=%s skipped=%s",
+        company_id, deactivated_count, len(skipped_ids),
+    )
+    return schemas.BulkDeactivateResult(deactivated_count=deactivated_count, skipped_ids=skipped_ids)
+
+
+@router.post(
     "/users/{user_id}/deactivate",
     response_model=schemas.EmployeeOut,
     summary="Xodimni faolsizlantirish",

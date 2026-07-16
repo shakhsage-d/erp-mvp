@@ -1120,6 +1120,7 @@ async function loadHrmsView() {
       empTbody.innerHTML = employees
         .map((u) => `
           <tr>
+            <td>${u.role === "owner" ? "" : `<input type="checkbox" class="employee-select" value="${u.id}" ${!u.is_active ? "disabled" : ""} />`}</td>
             <td>${u.full_name}</td>
             <td>${u.phone}</td>
             <td>${roleLabelText(u.role)}</td>
@@ -1135,11 +1136,42 @@ async function loadHrmsView() {
             </td>
           </tr>`)
         .join("");
+
+      document.querySelectorAll(".employee-select").forEach((cb) => {
+        cb.addEventListener("change", updateBulkDeactivateButton);
+      });
+      document.getElementById("employeeSelectAll").onclick = (e) => {
+        document.querySelectorAll(".employee-select:not(:disabled)").forEach((cb) => cb.checked = e.target.checked);
+        updateBulkDeactivateButton();
+      };
+      updateBulkDeactivateButton();
     } catch (_) { /* ruxsat yo'q bo'lsa jim o'tkazib yuboriladi */ }
 
     await loadRoles();
   }
 }
+
+function updateBulkDeactivateButton() {
+  const selected = document.querySelectorAll(".employee-select:checked");
+  document.getElementById("bulkDeactivateBtn").classList.toggle("hidden", selected.length === 0);
+}
+
+document.getElementById("bulkDeactivateBtn").addEventListener("click", async () => {
+  const ids = Array.from(document.querySelectorAll(".employee-select:checked")).map((cb) => Number(cb.value));
+  if (ids.length === 0) return;
+  if (!confirm(`${ids.length} ta xodimni faolsizlantirmoqchimisiz?`)) return;
+
+  try {
+    const result = await api("/auth/users/bulk-deactivate", {
+      method: "POST",
+      body: JSON.stringify({ user_ids: ids }),
+    });
+    toast(`${result.deactivated_count} ta xodim faolsizlantirildi`);
+    await loadHrmsView();
+  } catch (err) {
+    toast(err.message, "error");
+  }
+});
 
 async function loadRoles() {
   try {
