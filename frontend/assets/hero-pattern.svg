@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <!-- Girih (islomiy geometrik) naqsh — 8 qirrali yulduz, takrorlanuvchi -->
+    <pattern id="girih" width="130" height="130" patternUnits="userSpaceOnUse">
+      <path d="M65,22 L76,48 L104,48 L82,64 L91,90 L65,74 L39,90 L48,64 L26,48 L54,48 Z"
+            fill="none" stroke="#FFFFFF" stroke-width="1.6" opacity="0.55"/>
+      <line x1="0" y1="65" x2="130" y2="65" stroke="#FFFFFF" stroke-width="0.6" opacity="0.22"/>
+      <line x1="65" y1="0" x2="65" y2="130" stroke="#FFFFFF" stroke-width="0.6" opacity="0.22"/>
+    </pattern>
+  </defs>
+
+  <!-- Katta peshtoq (madrasa darvozasi) — tashqi konturi, ichi girih bilan to'ldirilgan -->
+  <path d="M150,660
+           L150,960
+           L750,960
+           L750,660
+           C750,455 615,320 450,320
+           C285,320 150,455 150,660 Z"
+        fill="url(#girih)" stroke="#FFFFFF" stroke-width="4" opacity="0.9"/>
+
+  <!-- Ichki peshtoq konturi (chuqurlik hissi uchun) -->
+  <path d="M235,665
+           L235,960
+           L665,960
+           L665,665
+           C665,505 570,405 450,405
+           C330,405 235,505 235,665 Z"
+        fill="none" stroke="#FFFFFF" stroke-width="2.4" opacity="0.65"/>
+
+  <!-- Peshtoq tepasidagi nozik yarim-doira bezak -->
+  <path d="M450,320 C520,320 580,360 615,420" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.5"/>
+  <path d="M450,320 C380,320 320,360 285,420" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.5"/>
+
+  <!-- Pastdagi gumbaz va minora siluetlari (me'morchilik konturi) -->
+  <g fill="#FFFFFF" opacity="0.85">
+    <!-- Chap minora -->
+    <rect x="24" y="880" width="26" height="320"/>
+    <circle cx="37" cy="868" r="20"/>
+    <rect x="20" y="845" width="34" height="14" opacity="0.9"/>
+
+    <!-- O'ng gumbaz -->
+    <path d="M760,1080 Q760,975 845,975 Q930,975 930,1080 L930,1200 L760,1200 Z"/>
+    <rect x="758" y="1078" width="4" height="4"/>
+
+    <!-- Chapdagi kichik gumbaz -->
+    <path d="M60,1120 Q60,1050 115,1050 Q170,1050 170,1120 L170,1200 L60,1200 Z" opacity="0.7"/>
+  </g>
+
+  <!-- Yer chizig'i -->
+  <line x1="0" y1="1200" x2="900" y2="1195" stroke="#FFFFFF" stroke-width="1" opacity="0.3"/>
+</svg>
