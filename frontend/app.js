@@ -265,6 +265,23 @@ function money(n) {
   return Number(n || 0).toLocaleString("uz-UZ");
 }
 
+function wireSortableHeaders(tableId, state, reloadFn) {
+  document.querySelectorAll(`#${tableId} .sortable-th`).forEach((th) => {
+    th.onclick = () => {
+      const column = th.dataset.sort;
+      if (state.sortBy === column) {
+        state.sortOrder = state.sortOrder === "asc" ? "desc" : "asc";
+      } else {
+        state.sortBy = column;
+        state.sortOrder = "asc";
+      }
+      document.querySelectorAll(`#${tableId} .sort-arrow`).forEach((arrow) => arrow.textContent = "");
+      document.querySelector(`#${tableId} [data-arrow="${column}"]`).textContent = state.sortOrder === "asc" ? "▲" : "▼";
+      reloadFn();
+    };
+  });
+}
+
 function debounce(fn, delay) {
   let timer;
   return (...args) => {
@@ -714,11 +731,15 @@ document.getElementById("printReceiptBtn").addEventListener("click", () => {
 // =========================================================
 // OMBOR
 // =========================================================
-let inventoryState = { page: 1, search: "" };
+let inventoryState = { page: 1, search: "", sortBy: null, sortOrder: "desc" };
 
 async function loadInventoryView(page = inventoryState.page, search = inventoryState.search) {
-  inventoryState = { page, search };
-  const response = await api(`/inventory/products?page=${page}&page_size=10&search=${encodeURIComponent(search)}`);
+  inventoryState = { ...inventoryState, page, search };
+  const queryParams = new URLSearchParams({
+    page, page_size: 10, search,
+    ...(inventoryState.sortBy && { sort_by: inventoryState.sortBy, sort_order: inventoryState.sortOrder }),
+  });
+  const response = await api(`/inventory/products?${queryParams.toString()}`);
   const products = response.items;
 
   const tbody = document.querySelector("#productsTable tbody");
@@ -735,6 +756,7 @@ async function loadInventoryView(page = inventoryState.page, search = inventoryS
 
   showEmptyState("productsTable", "productsEmptyState", products.length === 0);
   renderPagination("productsPagination", response.page, response.total_pages, (p) => loadInventoryView(p, search));
+  wireSortableHeaders("productsTable", inventoryState, () => loadInventoryView(1, inventoryState.search));
 }
 
 document.getElementById("productSearchInput").addEventListener("input", debounce((e) => {
@@ -903,7 +925,7 @@ async function receivePurchaseOrder(orderId) {
 // =========================================================
 // MOLIYA
 // =========================================================
-let financeState = { page: 1, search: "" };
+let financeState = { page: 1, search: "", sortBy: null, sortOrder: "desc" };
 
 async function loadFinanceView() {
   const summary = await api("/finance/summary");
@@ -985,7 +1007,7 @@ document.getElementById("openRecurringExpenseModalBtn").addEventListener("click"
 });
 
 async function loadTransactions(page = financeState.page, search = financeState.search) {
-  financeState = { page, search };
+  financeState = { ...financeState, page, search };
   const dateFrom = document.getElementById("transactionDateFrom").value;
   const dateTo = document.getElementById("transactionDateTo").value;
   const type = document.getElementById("transactionTypeFilter").value;
@@ -995,6 +1017,7 @@ async function loadTransactions(page = financeState.page, search = financeState.
     ...(dateFrom && { date_from: dateFrom }),
     ...(dateTo && { date_to: dateTo }),
     ...(type && { type }),
+    ...(financeState.sortBy && { sort_by: financeState.sortBy, sort_order: financeState.sortOrder }),
   });
 
   const response = await api(`/finance/transactions?${queryParams.toString()}`);
@@ -1010,6 +1033,7 @@ async function loadTransactions(page = financeState.page, search = financeState.
     .join("");
   showEmptyState("transactionsTable", "transactionsEmptyState", response.items.length === 0);
   renderPagination("transactionsPagination", response.page, response.total_pages, (p) => loadTransactions(p, search));
+  wireSortableHeaders("transactionsTable", financeState, () => loadTransactions(1, financeState.search));
 }
 
 document.getElementById("transactionDateFrom").addEventListener("change", () => loadTransactions(1, financeState.search));

@@ -234,7 +234,13 @@
             <input type="text" id="productSearchInput" placeholder="Mahsulot nomi bo'yicha qidirish..." />
           </div>
           <table class="data-table" id="productsTable">
-            <thead><tr><th>Nomi</th><th>Birligi</th><th>Tannarx</th><th>Sotish narxi</th><th>Qoldiq</th></tr></thead>
+            <thead><tr>
+              <th class="sortable-th" data-sort="name">Nomi <span class="sort-arrow" data-arrow="name"></span></th>
+              <th>Birligi</th>
+              <th class="sortable-th" data-sort="purchase_price">Tannarx <span class="sort-arrow" data-arrow="purchase_price"></span></th>
+              <th class="sortable-th" data-sort="sale_price">Sotish narxi <span class="sort-arrow" data-arrow="sale_price"></span></th>
+              <th class="sortable-th" data-sort="quantity">Qoldiq <span class="sort-arrow" data-arrow="quantity"></span></th>
+            </tr></thead>
             <tbody></tbody>
           </table>
           <div id="productsEmptyState" class="empty-state hidden">
@@ -371,7 +377,12 @@
           </div>
           <h3>So'nggi tranzaksiyalar</h3>
           <table class="data-table" id="transactionsTable">
-            <thead><tr><th>Turi</th><th>Summasi</th><th>Manbasi</th><th>Vaqti</th></tr></thead>
+            <thead><tr>
+              <th>Turi</th>
+              <th class="sortable-th" data-sort="amount">Summasi <span class="sort-arrow" data-arrow="amount"></span></th>
+              <th>Manbasi</th>
+              <th class="sortable-th" data-sort="created_at">Vaqti <span class="sort-arrow" data-arrow="created_at"></span></th>
+            </tr></thead>
             <tbody></tbody>
           </table>
           <div id="transactionsEmptyState" class="empty-state hidden">

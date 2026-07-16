@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from app.db.session import get_db
 from app.core.tenant import get_current_company_id, get_current_user_id
 from app.core.permissions import require_permission
-from app.core.pagination import Page, PageParams, paginate, build_page
+from app.core.pagination import Page, PageParams, paginate, build_page, apply_sort
 from app.core.audit_log import record_audit
 from app.core.logging_config import get_logger
 from app.core.exceptions import NotFoundError
@@ -52,7 +52,10 @@ def list_transactions(
     if txn_type:
         query = query.filter(models.Transaction.type == txn_type)
 
-    query = query.order_by(models.Transaction.created_at.desc())
+    query = apply_sort(query, params, {
+        "amount": models.Transaction.amount,
+        "created_at": models.Transaction.created_at,
+    }, default_column=models.Transaction.created_at)
     items, total = paginate(query, params)
     return build_page(items, total, params)
 

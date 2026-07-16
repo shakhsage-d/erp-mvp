@@ -20,7 +20,7 @@ from app.core.permissions import require_permission
 from app.core.exceptions import NotFoundError
 from app.core.logging_config import get_logger
 from app.core.rate_limit import limiter
-from app.core.pagination import Page, PageParams, paginate, build_page
+from app.core.pagination import Page, PageParams, paginate, build_page, apply_sort
 from app.modules.inventory import models, schemas
 
 router = APIRouter(prefix="/inventory", tags=["WMS - Ombor"])
@@ -70,7 +70,8 @@ def list_products(
     """
     Faqat shu kompaniyaga (token orqali) tegishli mahsulotlar va
     ularning qoldig'i. `?search=guruch` orqali nomi bo'yicha qidirish,
-    `?page=2&page_size=10` orqali sahifalash mumkin.
+    `?page=2&page_size=10` orqali sahifalash, `?sort_by=sale_price&
+    sort_order=asc` orqali saralash mumkin.
     """
     query = db.query(models.Product).filter(
         models.Product.company_id == company_id,
@@ -79,7 +80,12 @@ def list_products(
     if params.search:
         query = query.filter(models.Product.name.ilike(f"%{params.search}%"))
 
-    query = query.order_by(models.Product.id.desc())
+    query = apply_sort(query, params, {
+        "name": models.Product.name,
+        "purchase_price": models.Product.purchase_price,
+        "sale_price": models.Product.sale_price,
+        "quantity": models.Product.quantity,
+    }, default_column=models.Product.id)
     items, total = paginate(query, params)
     return build_page(items, total, params)
 
