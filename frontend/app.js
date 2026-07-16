@@ -799,6 +799,7 @@ async function loadSuppliersView() {
   document.querySelector("#suppliersTable tbody").innerHTML = suppliers
     .map((s) => `<tr><td>${s.name}</td><td>${s.contact_person || "-"}</td><td>${s.phone || "-"}</td></tr>`)
     .join("");
+  showEmptyState("suppliersTable", "suppliersEmptyState", suppliers.length === 0);
 
   const orders = await api("/purchase-orders");
   document.querySelector("#purchaseOrdersTable tbody").innerHTML = orders
@@ -810,6 +811,7 @@ async function loadSuppliersView() {
         <td>${o.status === "ordered" ? `<button class="link-btn" onclick="receivePurchaseOrder(${o.id})">qabul qilish</button>` : ""}</td>
       </tr>`)
     .join("");
+  showEmptyState("purchaseOrdersTable", "purchaseOrdersEmptyState", orders.length === 0);
 }
 
 document.getElementById("openSupplierModalBtn").addEventListener("click", () => {
@@ -986,6 +988,7 @@ async function loadTransactions(page = financeState.page, search = financeState.
         <td>${new Date(t.created_at).toLocaleString("uz-UZ")}</td>
       </tr>`)
     .join("");
+  showEmptyState("transactionsTable", "transactionsEmptyState", response.items.length === 0);
   renderPagination("transactionsPagination", response.page, response.total_pages, (p) => loadTransactions(p, search));
 }
 
@@ -1259,6 +1262,7 @@ async function loadPmsView() {
         <td><span class="status-pill status-${r.status}">${roomStatusText(r.status)}</span></td>
       </tr>`)
     .join("");
+  showEmptyState("roomsTable", "roomsEmptyState", rooms.length === 0);
 
   try {
     const occ = await api("/pms/analytics/occupancy");
@@ -1279,6 +1283,7 @@ async function loadPmsView() {
           <td>${b.status === "active" ? `<button class="link-btn" onclick="checkoutBooking(${b.id})">checkout</button>` : ""}</td>
         </tr>`)
       .join("");
+    showEmptyState("bookingsTable", "bookingsEmptyState", bookings.length === 0);
   } catch (_) { /* ruxsat bo'lmasa jadval bo'sh qoladi */ }
 }
 
