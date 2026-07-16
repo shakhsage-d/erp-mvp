@@ -712,7 +712,62 @@ async function loadFinanceView() {
   await loadTransactions(1, "");
   await loadDailySalesChart();
   await loadTopProducts();
+  await loadRecurringExpenses();
 }
+
+async function loadRecurringExpenses() {
+  try {
+    const templates = await api("/finance/recurring-expenses");
+    const tbody = document.querySelector("#recurringExpensesTable tbody");
+    tbody.innerHTML = templates.length === 0
+      ? ""
+      : templates
+          .map((t) => `
+            <tr>
+              <td>${t.source}</td>
+              <td class="mono">${money(t.amount)}</td>
+              <td>${t.day_of_month}-kun</td>
+              <td><span class="status-pill ${t.is_active ? "status-available" : "status-checked_out"}">${t.is_active ? "Faol" : "To'xtatilgan"}</span></td>
+              <td>${t.is_active ? `<button class="link-btn danger" onclick="deactivateRecurringExpense(${t.id})">to'xtatish</button>` : ""}</td>
+            </tr>`)
+          .join("");
+  } catch (_) { /* finance.manage ruxsati yo'q */ }
+}
+
+async function deactivateRecurringExpense(id) {
+  try {
+    await api(`/finance/recurring-expenses/${id}/deactivate`, { method: "POST" });
+    toast("To'xtatildi");
+    await loadRecurringExpenses();
+  } catch (err) {
+    toast(err.message, "error");
+  }
+}
+
+document.getElementById("openRecurringExpenseModalBtn").addEventListener("click", () => {
+  openModal("Yangi takrorlanuvchi xarajat", `
+    <label>Sababi <input type="text" name="source" placeholder="Masalan: Ijaraga" required /></label>
+    <label>Summa <input type="number" name="amount" min="1" required /></label>
+    <label>Har oyning nechinchi kunida <input type="number" name="day_of_month" min="1" max="28" value="1" required /></label>
+  `, async (form) => {
+    const fd = new FormData(form);
+    try {
+      await api("/finance/recurring-expenses", {
+        method: "POST",
+        body: JSON.stringify({
+          source: fd.get("source").trim(),
+          amount: Number(fd.get("amount")),
+          day_of_month: Number(fd.get("day_of_month")),
+        }),
+      });
+      toast("Shablon yaratildi");
+      closeModal();
+      await loadRecurringExpenses();
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  }, "Yaratish");
+});
 
 async function loadTransactions(page = financeState.page, search = financeState.search) {
   financeState = { page, search };

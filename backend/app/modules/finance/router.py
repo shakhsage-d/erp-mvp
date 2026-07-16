@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case
+from sqlalchemy import func, case, or_
 from datetime import datetime, timedelta
 
 from app.db.session import get_db
@@ -9,6 +9,7 @@ from app.core.permissions import require_permission
 from app.core.pagination import Page, PageParams, paginate, build_page
 from app.core.audit_log import record_audit
 from app.core.logging_config import get_logger
+from app.core.exceptions import NotFoundError
 from app.modules.finance import models, schemas
 
 router = APIRouter(prefix="/finance", tags=["FMS - Moliya"])
@@ -86,6 +87,46 @@ def create_expense(
     return transaction
 
 
+def process_due_recurring_expenses(db: Session, company_id: int) -> int:
+    """
+    Shu kompaniya uchun "muddati kelgan" takrorlanuvchi xarajatlarni
+    tekshiradi va kerak bo'lganlarini avtomatik yaratadi. Bir oyda
+    bitta shablon uchun faqat BITTA marta yaratiladi (`last_generated_month`
+    orqali nazorat qilinadi).
+
+    Bu funksiya alohida fon-jarayon (cron) o'rniga, foydalanuvchi
+    Moliya sahifasini har safar ochganda (`/finance/summary` orqali)
+    chaqiriladi — shuning uchun "avtomatik" ishlaydi, lekin qo'shimcha
+    infratuzilma (scheduler, cron) talab qilmaydi.
+    """
+    today = datetime.utcnow()
+    current_month_key = today.strftime("%Y-%m")
+
+    due_templates = db.query(models.RecurringExpense).filter(
+        models.RecurringExpense.company_id == company_id,
+        models.RecurringExpense.is_active.is_(True),
+        models.RecurringExpense.day_of_month <= today.day,
+        or_(
+            models.RecurringExpense.last_generated_month.is_(None),
+            models.RecurringExpense.last_generated_month != current_month_key,
+        ),
+    ).all()
+
+    for template in due_templates:
+        db.add(models.Transaction(
+            company_id=company_id,
+            type=models.TransactionType.EXPENSE,
+            amount=template.amount,
+            source=f"{template.source} (avtomatik)",
+        ))
+        template.last_generated_month = current_month_key
+
+    if due_templates:
+        db.commit()
+
+    return len(due_templates)
+
+
 @router.get(
     "/summary",
     summary="Moliyaviy xulosa (kirim/chiqim/foyda)",
@@ -97,8 +138,12 @@ def summary(
 ):
     """
     Umumiy kirim, chiqim va sof foydani qaytaradi. `finance.view`
-    ruxsatiga ega foydalanuvchilar ko'ra oladi.
+    ruxsatiga ega foydalanuvchilar ko'ra oladi. Chaqirilganda, avval
+    muddati kelgan takrorlanuvchi xarajatlar (agar bo'lsa) avtomatik
+    yaratiladi.
     """
+    process_due_recurring_expenses(db, company_id)
+
     income = db.query(func.sum(models.Transaction.amount)).filter(
         models.Transaction.company_id == company_id,
         models.Transaction.type == models.TransactionType.INCOME,
@@ -114,6 +159,78 @@ def summary(
         "total_expense": expense,
         "net_profit": income - expense,
     }
+
+
+@router.post(
+    "/recurring-expenses",
+    response_model=schemas.RecurringExpenseOut,
+    summary="Takrorlanuvchi xarajat shabloni yaratish",
+)
+def create_recurring_expense(
+    payload: schemas.RecurringExpenseCreate,
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    actor_id: int = Depends(get_current_user_id),
+    _: None = Depends(require_permission("finance.manage")),
+):
+    """Masalan: har oyning 5-kunida "Ijaraga" nomli xarajat avtomatik yaratilsin."""
+    template = models.RecurringExpense(
+        company_id=company_id,
+        amount=payload.amount,
+        source=payload.source,
+        day_of_month=payload.day_of_month,
+    )
+    db.add(template)
+    db.flush()
+
+    record_audit(
+        db, company_id, actor_id, "recurring_expense.create",
+        entity_type="recurring_expense", entity_id=template.id,
+        details=f"{payload.source}: {payload.amount} (har oy {payload.day_of_month}-kun)",
+    )
+
+    db.commit()
+    db.refresh(template)
+    return template
+
+
+@router.get(
+    "/recurring-expenses",
+    response_model=list[schemas.RecurringExpenseOut],
+    summary="Takrorlanuvchi xarajat shablonlari ro'yxati",
+)
+def list_recurring_expenses(
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    _: None = Depends(require_permission("finance.manage")),
+):
+    return db.query(models.RecurringExpense).filter(
+        models.RecurringExpense.company_id == company_id,
+    ).order_by(models.RecurringExpense.day_of_month).all()
+
+
+@router.post(
+    "/recurring-expenses/{template_id}/deactivate",
+    response_model=schemas.RecurringExpenseOut,
+    summary="Takrorlanuvchi xarajatni to'xtatish",
+)
+def deactivate_recurring_expense(
+    template_id: int,
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    _: None = Depends(require_permission("finance.manage")),
+):
+    template = db.query(models.RecurringExpense).filter(
+        models.RecurringExpense.id == template_id,
+        models.RecurringExpense.company_id == company_id,
+    ).first()
+    if not template:
+        raise NotFoundError("Shablon topilmadi")
+
+    template.is_active = False
+    db.commit()
+    db.refresh(template)
+    return template
 
 
 @router.get(

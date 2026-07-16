@@ -262,6 +262,19 @@
         </div>
 
         <div class="card">
+          <div class="card-header">
+            <h3>Takrorlanuvchi xarajatlar</h3>
+            <button class="btn-icon" id="openRecurringExpenseModalBtn" title="Yangi shablon">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+          <table class="data-table" id="recurringExpensesTable">
+            <thead><tr><th>Sababi</th><th>Summa</th><th>Har oy</th><th>Holati</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="card">
           <div class="search-bar">
             <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="transactionSearchInput" placeholder="Manba bo'yicha qidirish (masalan Sale)..." />
