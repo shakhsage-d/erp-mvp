@@ -351,6 +351,24 @@
             <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="transactionSearchInput" placeholder="Manba bo'yicha qidirish (masalan Sale)..." />
           </div>
+          <div class="inline-form" style="margin-bottom:14px;">
+            <label style="font-size:0.8rem; color:var(--ink-soft); display:flex; flex-direction:column; gap:4px; flex:1 1 140px;">
+              Sanadan
+              <input type="date" id="transactionDateFrom" />
+            </label>
+            <label style="font-size:0.8rem; color:var(--ink-soft); display:flex; flex-direction:column; gap:4px; flex:1 1 140px;">
+              Sanagacha
+              <input type="date" id="transactionDateTo" />
+            </label>
+            <label style="font-size:0.8rem; color:var(--ink-soft); display:flex; flex-direction:column; gap:4px; flex:1 1 140px;">
+              Turi
+              <select id="transactionTypeFilter">
+                <option value="">Barchasi</option>
+                <option value="income">Faqat kirim</option>
+                <option value="expense">Faqat chiqim</option>
+              </select>
+            </label>
+          </div>
           <h3>So'nggi tranzaksiyalar</h3>
           <table class="data-table" id="transactionsTable">
             <thead><tr><th>Turi</th><th>Summasi</th><th>Manbasi</th><th>Vaqti</th></tr></thead>

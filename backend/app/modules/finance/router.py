@@ -25,6 +25,9 @@ def list_transactions(
     db: Session = Depends(get_db),
     company_id: int = Depends(get_current_company_id),
     params: PageParams = Depends(),
+    date_from: str | None = Query(default=None, description="YYYY-MM-DD formatida, shu sanadan boshlab"),
+    date_to: str | None = Query(default=None, description="YYYY-MM-DD formatida, shu sanagacha"),
+    txn_type: str | None = Query(default=None, alias="type", description="'income' yoki 'expense'"),
     _: None = Depends(require_permission("finance.view")),
 ):
     """
@@ -32,12 +35,22 @@ def list_transactions(
     shu kompaniyaga tegishli. `finance.view` ruxsatiga ega
     foydalanuvchilar (standart holatda faqat egasi) ko'ra oladi.
     `?search=...` — manba (`source`) bo'yicha qidiradi, masalan "Sale".
+    `?date_from=`, `?date_to=`, `?type=` — kengaytirilgan filtrlar
+    (buxgalter/soliq hisoboti uchun).
     """
     query = db.query(models.Transaction).filter(
         models.Transaction.company_id == company_id
     )
     if params.search:
         query = query.filter(models.Transaction.source.ilike(f"%{params.search}%"))
+    if date_from:
+        query = query.filter(models.Transaction.created_at >= datetime.strptime(date_from, "%Y-%m-%d"))
+    if date_to:
+        query = query.filter(
+            models.Transaction.created_at < datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1)
+        )
+    if txn_type:
+        query = query.filter(models.Transaction.type == txn_type)
 
     query = query.order_by(models.Transaction.created_at.desc())
     items, total = paginate(query, params)

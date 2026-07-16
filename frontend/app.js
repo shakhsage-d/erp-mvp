@@ -578,7 +578,16 @@ document.getElementById("exportProductsCsvBtn").addEventListener("click", async 
 
 document.getElementById("exportTransactionsCsvBtn").addEventListener("click", async () => {
   try {
-    const response = await api(`/finance/transactions?page_size=1000&search=${encodeURIComponent(financeState.search || "")}`);
+    const dateFrom = document.getElementById("transactionDateFrom").value;
+    const dateTo = document.getElementById("transactionDateTo").value;
+    const type = document.getElementById("transactionTypeFilter").value;
+    const queryParams = new URLSearchParams({
+      page_size: 1000, search: financeState.search || "",
+      ...(dateFrom && { date_from: dateFrom }),
+      ...(dateTo && { date_to: dateTo }),
+      ...(type && { type }),
+    });
+    const response = await api(`/finance/transactions?${queryParams.toString()}`);
     const rows = [["Turi", "Summasi", "Manbasi", "Vaqti"]];
     response.items.forEach((t) => rows.push([
       t.type === "income" ? "Kirim" : "Chiqim",
@@ -977,7 +986,18 @@ document.getElementById("openRecurringExpenseModalBtn").addEventListener("click"
 
 async function loadTransactions(page = financeState.page, search = financeState.search) {
   financeState = { page, search };
-  const response = await api(`/finance/transactions?page=${page}&page_size=10&search=${encodeURIComponent(search)}`);
+  const dateFrom = document.getElementById("transactionDateFrom").value;
+  const dateTo = document.getElementById("transactionDateTo").value;
+  const type = document.getElementById("transactionTypeFilter").value;
+
+  const queryParams = new URLSearchParams({
+    page, page_size: 10, search,
+    ...(dateFrom && { date_from: dateFrom }),
+    ...(dateTo && { date_to: dateTo }),
+    ...(type && { type }),
+  });
+
+  const response = await api(`/finance/transactions?${queryParams.toString()}`);
   const tbody = document.querySelector("#transactionsTable tbody");
   tbody.innerHTML = response.items
     .map((t) => `
@@ -991,6 +1011,10 @@ async function loadTransactions(page = financeState.page, search = financeState.
   showEmptyState("transactionsTable", "transactionsEmptyState", response.items.length === 0);
   renderPagination("transactionsPagination", response.page, response.total_pages, (p) => loadTransactions(p, search));
 }
+
+document.getElementById("transactionDateFrom").addEventListener("change", () => loadTransactions(1, financeState.search));
+document.getElementById("transactionDateTo").addEventListener("change", () => loadTransactions(1, financeState.search));
+document.getElementById("transactionTypeFilter").addEventListener("change", () => loadTransactions(1, financeState.search));
 
 document.getElementById("openExpenseModalBtn").addEventListener("click", () => {
   openModal("Yangi xarajat (chiqim)", `
