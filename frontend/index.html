@@ -85,6 +85,10 @@
         <svg class="icon" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
         Ombor
       </button>
+      <button class="nav-item" data-view="suppliers" data-role-gate="suppliers">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        Ta'minotchilar
+      </button>
       <button class="nav-item" data-view="finance" data-role-gate="finance">
         <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="10" width="3.5" height="10"/><rect x="10.25" y="5" width="3.5" height="15"/><rect x="16.5" y="13" width="3.5" height="7"/></svg>
         Moliya
@@ -226,6 +230,39 @@
             <div class="empty-hint">Yuqoridagi tugma orqali birinchi mahsulotingizni qo'shing</div>
           </div>
           <div class="pagination" id="productsPagination"></div>
+        </div>
+      </section>
+
+      <!-- TA'MINOTCHILAR -->
+      <section id="view-suppliers" class="view">
+        <div class="view-header">
+          <div><h2>Ta'minotchilar</h2><div class="view-subtitle">Ta'minotchilar va xarid buyurtmalari</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Ta'minotchilar</h3>
+            <button class="btn-icon" id="openSupplierModalBtn" title="Yangi ta'minotchi">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+          <table class="data-table" id="suppliersTable">
+            <thead><tr><th>Nomi</th><th>Aloqa</th><th>Telefon</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Xarid buyurtmasi</h3>
+            <button class="btn-icon" id="openPurchaseOrderModalBtn" title="Yangi buyurtma">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+          <table class="data-table" id="purchaseOrdersTable">
+            <thead><tr><th>#</th><th>Summasi</th><th>Holati</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
         </div>
       </section>
 

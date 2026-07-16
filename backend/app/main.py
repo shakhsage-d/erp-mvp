@@ -35,6 +35,7 @@ from app.modules.finance import models as finance_models  # noqa: F401,E402
 from app.modules.hrms import models as hrms_models  # noqa: F401,E402
 from app.modules.pms import models as pms_models  # noqa: F401,E402
 from app.modules.audit import models as audit_models  # noqa: F401,E402
+from app.modules.suppliers import models as suppliers_models  # noqa: F401,E402
 
 from app.modules.inventory.router import router as inventory_router  # noqa: E402
 from app.modules.sales.router import router as sales_router  # noqa: E402
@@ -43,6 +44,7 @@ from app.modules.auth.router import router as auth_router  # noqa: E402
 from app.modules.hrms.router import router as hrms_router  # noqa: E402
 from app.modules.pms.router import router as pms_router  # noqa: E402
 from app.modules.audit.router import router as audit_router  # noqa: E402
+from app.modules.suppliers.router import router as suppliers_router  # noqa: E402
 
 # MUHIM: Base.metadata.create_all(bind=engine) ATAYLAB OLIB TASHLANDI.
 # Endi baza sxemasining YAGONA manbai — Alembic migratsiyalari
@@ -94,6 +96,10 @@ app = FastAPI(
         {
             "name": "Audit - Tarix",
             "description": "Kompaniyadagi muhim amallar tarixi (kim, qachon, nima qilgani).",
+        },
+        {
+            "name": "Ta'minotchilar (Suppliers)",
+            "description": "Ta'minotchilar va xarid buyurtmalari. Qabul qilish WMS+FMS'ga avtomatik ta'sir qiladi.",
         },
     ],
 )
@@ -175,6 +181,7 @@ app.include_router(finance_router)
 app.include_router(hrms_router)
 app.include_router(pms_router)
 app.include_router(audit_router)
+app.include_router(suppliers_router)
 
 
 @app.get("/")

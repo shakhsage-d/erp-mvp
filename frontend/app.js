@@ -150,9 +150,9 @@ function roleLabelText(role) {
 
 // ---------- Rolga qarab qaysi tab/bo'lim ko'rinishini belgilash ----------
 const ROLE_VISIBILITY = {
-  owner: ["inventory", "finance", "pms", "employees", "settings"],
+  owner: ["inventory", "finance", "pms", "employees", "settings", "suppliers"],
   cashier: [],
-  storekeeper: ["inventory"],
+  storekeeper: ["inventory", "suppliers"],
   receptionist: ["pms"],
 };
 
@@ -253,6 +253,7 @@ function loadCurrentView() {
   if (view === "home") loadHomeView();
   if (view === "sales") loadSalesView();
   if (view === "inventory") loadInventoryView();
+  if (view === "suppliers") loadSuppliersView();
   if (view === "finance") loadFinanceView();
   if (view === "hrms") loadHrmsView();
   if (view === "pms") loadPmsView();
@@ -743,6 +744,105 @@ document.getElementById("openStockInModalBtn").addEventListener("click", async (
     }
   }, "Kirim qilish");
 });
+
+// =========================================================
+// TA'MINOTCHILAR (Suppliers)
+// =========================================================
+async function loadSuppliersView() {
+  const suppliersResponse = await api("/suppliers?page_size=100");
+  const suppliers = suppliersResponse.items;
+  document.querySelector("#suppliersTable tbody").innerHTML = suppliers
+    .map((s) => `<tr><td>${s.name}</td><td>${s.contact_person || "-"}</td><td>${s.phone || "-"}</td></tr>`)
+    .join("");
+
+  const orders = await api("/purchase-orders");
+  document.querySelector("#purchaseOrdersTable tbody").innerHTML = orders
+    .map((o) => `
+      <tr>
+        <td>#${o.id}</td>
+        <td class="mono">${money(o.total_amount)}</td>
+        <td><span class="status-pill ${o.status === "received" ? "status-available" : "status-active"}">${o.status === "received" ? "Qabul qilindi" : "Buyurtma berildi"}</span></td>
+        <td>${o.status === "ordered" ? `<button class="link-btn" onclick="receivePurchaseOrder(${o.id})">qabul qilish</button>` : ""}</td>
+      </tr>`)
+    .join("");
+}
+
+document.getElementById("openSupplierModalBtn").addEventListener("click", () => {
+  openModal("Yangi ta'minotchi", `
+    <label>Nomi <input type="text" name="name" required /></label>
+    <label>Aloqa shaxsi (ixtiyoriy) <input type="text" name="contact_person" /></label>
+    <label>Telefon (ixtiyoriy) <input type="text" name="phone" /></label>
+  `, async (form) => {
+    const fd = new FormData(form);
+    try {
+      await api("/suppliers", {
+        method: "POST",
+        body: JSON.stringify({
+          name: fd.get("name").trim(),
+          contact_person: fd.get("contact_person")?.trim() || null,
+          phone: fd.get("phone")?.trim() || null,
+        }),
+      });
+      toast("Ta'minotchi qo'shildi");
+      closeModal();
+      await loadSuppliersView();
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  });
+});
+
+document.getElementById("openPurchaseOrderModalBtn").addEventListener("click", async () => {
+  const suppliersResponse = await api("/suppliers?page_size=100");
+  const productsResponse = await api("/inventory/products?page_size=100");
+
+  if (suppliersResponse.items.length === 0) {
+    toast("Avval ta'minotchi qo'shing", "error");
+    return;
+  }
+
+  const supplierOptions = suppliersResponse.items.map((s) => `<option value="${s.id}">${s.name}</option>`).join("");
+  const productOptions = productsResponse.items.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
+
+  openModal("Yangi xarid buyurtmasi", `
+    <label>Ta'minotchi <select name="supplier_id">${supplierOptions}</select></label>
+    <label>Mahsulot <select name="product_id">${productOptions}</select></label>
+    <label>Miqdor <input type="number" name="quantity" min="0.01" step="0.01" required /></label>
+    <label>Birlik narxi <input type="number" name="unit_price" min="0" required /></label>
+  `, async (form) => {
+    const fd = new FormData(form);
+    try {
+      await api("/purchase-orders", {
+        method: "POST",
+        body: JSON.stringify({
+          supplier_id: Number(fd.get("supplier_id")),
+          items: [{
+            product_id: Number(fd.get("product_id")),
+            quantity: Number(fd.get("quantity")),
+            unit_price: Number(fd.get("unit_price")),
+          }],
+        }),
+      });
+      toast("Xarid buyurtmasi yaratildi");
+      closeModal();
+      await loadSuppliersView();
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  }, "Yaratish");
+});
+
+async function receivePurchaseOrder(orderId) {
+  if (!confirm("Tovar haqiqatan ham kelib tushdimi? Bu ombor qoldig'ini oshiradi va moliyaga chiqim yozadi.")) return;
+  try {
+    await api(`/purchase-orders/${orderId}/receive`, { method: "POST" });
+    toast("Buyurtma qabul qilindi, ombor va moliya yangilandi");
+    await loadSuppliersView();
+    refreshNotifications();
+  } catch (err) {
+    toast(err.message, "error");
+  }
+}
 
 // =========================================================
 // MOLIYA

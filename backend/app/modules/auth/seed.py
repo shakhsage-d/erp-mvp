@@ -31,13 +31,14 @@ PERMISSION_CATALOG = {
     "pms.manage": "Mehmonxona xonalari va bronlarni boshqarish",
     "audit.view": "Kompaniyadagi muhim amallar tarixini ko'rish",
     "company.manage": "Kompaniya profilini tahrirlash",
+    "suppliers.manage": "Ta'minotchilar va xarid buyurtmalarini boshqarish",
 }
 
 # --- Standart lavozimlar va ularning ruxsatlari ---
 DEFAULT_ROLE_PERMISSIONS = {
     "owner": list(PERMISSION_CATALOG.keys()),  # egasi — hammasi
     "cashier": ["sales.create"],
-    "storekeeper": ["inventory.manage"],
+    "storekeeper": ["inventory.manage", "suppliers.manage"],
     "receptionist": ["pms.manage"],  # mehmonxona resepshin xodimi
 }
 
