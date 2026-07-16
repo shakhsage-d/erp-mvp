@@ -244,11 +244,12 @@ document.querySelectorAll(".nav-item").forEach((tab) => {
 });
 
 function currentViewName() {
-  return document.querySelector(".nav-item.active")?.dataset.view || "sales";
+  return document.querySelector(".nav-item.active")?.dataset.view || "home";
 }
 
 function loadCurrentView() {
   const view = currentViewName();
+  if (view === "home") loadHomeView();
   if (view === "sales") loadSalesView();
   if (view === "inventory") loadInventoryView();
   if (view === "finance") loadFinanceView();
@@ -283,6 +284,114 @@ function renderPagination(containerId, page, totalPages, onPageChange) {
 function showEmptyState(tableId, emptyId, isEmpty) {
   document.getElementById(tableId).classList.toggle("hidden", isEmpty);
   document.getElementById(emptyId)?.classList.toggle("hidden", !isEmpty);
+}
+
+// =========================================================
+// BOSH SAHIFA (Dashboard Home)
+// =========================================================
+const LOW_STOCK_THRESHOLD = 5;
+
+function auditActionText(action) {
+  const map = {
+    "employee.create": "Yangi xodim qo'shildi",
+    "employee.update": "Xodim ma'lumoti yangilandi",
+    "employee.deactivate": "Xodim faolsizlantirildi",
+    "employee.reactivate": "Xodim qayta faollashtirildi",
+    "sale.create": "Sotuv amalga oshirildi",
+    "booking.checkout": "Mehmon chiqarildi",
+  };
+  return map[action] || action;
+}
+
+async function loadHomeView() {
+  const companyName = getCompanyName() || "";
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Xayrli tong" : hour < 18 ? "Xayrli kun" : "Xayrli kech";
+  document.getElementById("homeGreeting").textContent = `${greeting}, ${companyName}`;
+
+  // --- Ombor: mahsulotlar va kam qolganlar ---
+  const productsResponse = await api("/inventory/products?page_size=100");
+  const products = productsResponse.items;
+  const lowStock = products.filter((p) => p.quantity < LOW_STOCK_THRESHOLD);
+
+  const lowStockTbody = document.querySelector("#lowStockTable tbody");
+  lowStockTbody.innerHTML = lowStock
+    .map((p) => `<tr><td>${p.name}</td><td class="mono">${p.quantity}</td></tr>`)
+    .join("");
+  showEmptyState("lowStockTable", "lowStockEmpty", lowStock.length === 0);
+
+  // --- Stat kartalar (faqat ruxsati bor va mavjud bo'lganlari) ---
+  const stats = [{ label: "Mahsulotlar soni", value: products.length }];
+
+  let financeSummary = null;
+  try {
+    financeSummary = await api("/finance/summary");
+    stats.push({ label: "Umumiy tushum", value: money(financeSummary.total_income) + " so'm" });
+    stats.push({ label: "Sof foyda", value: money(financeSummary.net_profit) + " so'm", accent: true });
+  } catch (_) { /* finance.view ruxsati yo'q — jim o'tkaziladi */ }
+
+  try {
+    const occ = await api("/pms/analytics/occupancy");
+    if (occ.total_rooms > 0) {
+      stats.push({ label: "Mehmonxona to'lilik", value: `${occ.occupancy_rate}%` });
+    }
+  } catch (_) { /* pms.manage ruxsati yo'q yoki modul ishlatilmaydi */ }
+
+  document.getElementById("homeStatsRow").innerHTML = stats
+    .map((s) => `
+      <div class="stat-card ${s.accent ? "accent" : ""}">
+        <span class="stat-label">${s.label}</span>
+        <span class="stat-value mono">${s.value}</span>
+      </div>`)
+    .join("");
+
+  // --- Onboarding checklist (faqat egasi uchun ma'noli) ---
+  if (getRole() === "owner") {
+    let employeesCount = 1;
+    try {
+      const employees = await api("/auth/users");
+      employeesCount = employees.length;
+    } catch (_) { /* jim o'tkaziladi */ }
+
+    const steps = [
+      { done: products.length > 0, text: "Birinchi mahsulotingizni qo'shing" },
+      { done: employeesCount > 1, text: "Birinchi xodimingizni qo'shing" },
+      { done: !!(financeSummary && financeSummary.total_income > 0), text: "Birinchi sotuvingizni amalga oshiring" },
+    ];
+    const remaining = steps.filter((s) => !s.done);
+
+    const onboardingCard = document.getElementById("onboardingCard");
+    if (remaining.length > 0) {
+      onboardingCard.classList.remove("hidden");
+      document.getElementById("onboardingList").innerHTML = steps
+        .map((s) => `
+          <li style="display:flex; align-items:center; gap:10px; ${s.done ? "opacity:0.5;" : ""}">
+            <span style="width:18px;height:18px;border-radius:50%;border:2px solid var(--primary);
+                         display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+                         font-size:0.7rem; color:var(--primary);">${s.done ? "✓" : ""}</span>
+            <span style="${s.done ? "text-decoration:line-through; color:var(--ink-soft);" : ""}">${s.text}</span>
+          </li>`)
+        .join("");
+    } else {
+      onboardingCard.classList.add("hidden");
+    }
+
+    // --- So'nggi voqealar (audit-log) ---
+    try {
+      const auditResponse = await api("/audit-log?page_size=5");
+      document.getElementById("homeActivityCard").classList.remove("hidden");
+      const list = document.getElementById("recentActivityList");
+      list.innerHTML = auditResponse.items.length === 0
+        ? `<li style="color:var(--ink-soft);">Hali hech qanday voqea yo'q</li>`
+        : auditResponse.items
+            .map((e) => `
+              <li>
+                <span>${auditActionText(e.action)}${e.details ? " — " + e.details : ""}</span>
+                <span style="color:var(--ink-soft); font-size:0.78rem;">${new Date(e.created_at).toLocaleString("uz-UZ")}</span>
+              </li>`)
+            .join("");
+    } catch (_) { /* audit.view ruxsati yo'q */ }
+  }
 }
 
 // =========================================================

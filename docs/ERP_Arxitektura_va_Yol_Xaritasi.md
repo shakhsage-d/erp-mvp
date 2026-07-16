@@ -1,4 +1,4 @@
-# mikroerp — Arxitektura Ramkasi va Rivojlanish Yo'l Xaritasi
+# Ustun — Arxitektura Ramkasi va Rivojlanish Yo'l Xaritasi
 
 *Bu hujjat — loyihaning "yagona haqiqat manbai" (single source of truth). Har bir yangi funksiya, modul yoki texnik qaror shu ramka asosida tekshiriladi. Demo emas — bu hozirdan boshlab asta-sekin haqiqiy mahsulotga aylanadigan tizimning konstitutsiyasi.*
 
@@ -56,7 +56,7 @@ erp-system/
 
 ## 3. Multi-tenancy qoidasi (hech qachon buzilmaydi)
 
-- Har bir biznes-jadvalda **majburiy** `company_id` mikroerpi bo'ladi (child-jadvallarda ham — `StockMovement`, `SaleItem` kabi).
+- Har bir biznes-jadvalda **majburiy** `company_id` ustuni bo'ladi (child-jadvallarda ham — `StockMovement`, `SaleItem` kabi).
 - Ma'lumot **yozilganda ham, o'qilganda ham** `company_id` filtri bo'lishi shart. Faqat yozishda bo'lib, o'qishda yo'qligi — xavfsizlik teshigi hisoblanadi.
 - Filtr har doim `core/tenant.py`dagi bitta markaziy funksiya (`get_current_company_id`) orqali olinadi, hech qachon routerlarda alohida-alohida yozilmaydi.
 - Hozircha (auth yo'q paytda) bu funksiya `1` qaytaradi. Auth qo'shilganda **faqat shu bitta funksiya** o'zgaradi, boshqa hech qaysi fayl o'zgarmaydi.
@@ -144,7 +144,7 @@ Yangi funksiya qo'shishdan oldin har safar so'rang:
 
 ## 9. ERP 2.0 — Professional darajaga chiqarish
 
-> Loyiha nomi: **mikroerp**. Bu bosqichning maqsadi — tizimni "ishlaydigan MVP"dan "haqiqiy sotiladigan mahsulot" darajasiga ko'tarish. Tartib: avval backend (har bir band alohida, testlar bilan), so'ng hozirgi oddiy frontend orqali sinash, YAKUNIDA to'liq UI/UX pardozi (alohida marketing sahifa + professional dashboard dizayni).
+> Loyiha nomi: **Ustun**. Bu bosqichning maqsadi — tizimni "ishlaydigan MVP"dan "haqiqiy sotiladigan mahsulot" darajasiga ko'tarish. Tartib: avval backend (har bir band alohida, testlar bilan), so'ng hozirgi oddiy frontend orqali sinash, YAKUNIDA to'liq UI/UX pardozi (alohida marketing sahifa + professional dashboard dizayni).
 
 ### Backend backlog — ✅ TO'LIQ YAKUNLANDI (81 ta test)
 
@@ -157,5 +157,46 @@ Yangi funksiya qo'shishdan oldin har safar so'rang:
 7. ✅ **Rate limiting — foydalanuvchi bo'yicha** — endi IP emas, foydalanuvchi ID bo'yicha
 
 ### Keyin — frontend UI/UX yakuniy pardozi
-- Alohida marketing/sotuv sahifasi (isbd.uz uslubida, lekin "mikroerp" o'z brendi bilan)
-- Dashboard: modal oynalar, toast bildirishnomalar, qidiruv/filtr, grafiklar, tahrirlash imkoniyati
+- Alohida marketing/sotuv sahifasi (isbd.uz uslubida, lekin "Ustun" o'z brendi bilan)
+- Dashboard: modal oynalar, toast bildirishnomalar, qidiruv/filtr, grafiklar, tahrirlash imkoniyati ✅ YAKUNLANDI (professional sidebar+SVG dizayn bilan)
+
+## 10. ERP 2.1.0 — Professional ERP standartlariga to'liq moslashtirish
+
+> Asos: real ERP tizimlari (SAP, Odoo, Zoho, isbd.uz) va 2026-yil enterprise UX tadqiqotlariga tayangan holda tuzilgan. Har bir band: (1) aniq muammoni yechadi, (2) mavjud arxitekturaga (modulli, multi-tenant, dinamik ruxsatlar) mos joylashadi, (3) testlar bilan tasdiqlanadi. Bosqichlar mantiqiy bog'liqlik tartibida.
+
+### Faza A — Yadro dashboard tajribasi (birinchi, chunki keyingi fazalar shunga bog'lanadi)
+- **A1. Bosh sahifa (Dashboard Home)** — barcha modullardan KPI xulosasi + "birinchi qadamlar" onboarding checklist. Real ERP'larning "product home page" naqshi — foydalanuvchi tizimga kirganda birinchi ko'radigan, kontekst beruvchi sahifa.
+- **A2. Global qidiruv** — topbar'da mahsulot/xodim/bron/tranzaksiya bo'yicha tezkor qidiruv
+- **A3. Bildirishnomalar markazi** — audit-log asosida + past qoldiq ogohlantirishlari, qo'ng'iroq belgisi orqali
+- **A4. Sozlamalar sahifasi** — kompaniya profili tahrirlash (nom, biznes turi, aloqa)
+- **A5. Qorong'i rejim (dark mode)** — CSS o'zgaruvchilari orqali (arzon, chunki tayyor tizim bor)
+
+### Faza B — Moliya modulini to'liqlashtirish (FMS'ning yetishmayotgan yarmi)
+- **B1. Xarajatlarni qo'lda kiritish** — hozir faqat avtomatik kirim bor, chiqim yo'q (ijaraga, kommunalga, ish haqiga)
+- **B2. Takrorlanuvchi xarajatlar** — oylik ijaraga har safar qo'lda yozmaslik uchun
+- **B3. Moliyaviy hisobot eksporti** — CSV/PDF, buxgalter/soliq uchun
+- **B4. HRMS↔FMS integratsiyasi: ish haqi** — smenalar asosida avtomatik ish haqi hisoblash va FMS'ga chiqim sifatida yozish (chuqur integratsiya, xuddi Savdo/PMS kabi)
+
+### Faza C — Ma'lumot bilan ishlash (enterprise darajasida jadvallar)
+- **C1. Ustunlar bo'yicha saralash** barcha jadvallarda
+- **C2. Ommaviy amallar (bulk actions)** — bir nechtasini belgilab, birga o'chirish/faolsizlantirish
+- **C3. CSV/Excel eksport** — har bir jadvaldan
+- **C4. Kengaytirilgan filtrlar** — sana oralig'i, holat bo'yicha
+
+### Faza D — Yangi biznes modullari
+- **D1. Ta'minotchilar va xarid buyurtmalari (Suppliers/Purchasing)** — kimdan, qancha xarid qilingani, to'liq hayot sikli (qoralama → buyurtma berildi → qabul qilindi → avtomatik omborga kirim)
+- **D2. Mijozlarni kuzatish** — savdoda ixtiyoriy mijoz ma'lumoti, "eng faol mijozlar" hisoboti
+- **D3. Chek/faktura chop etish** — brauzer orqali chop etiladigan shablon
+- **D4. Ko'p filial (multi-branch)** — bitta kompaniya, bir nechta do'kon/filial, alohida ombor va hisobot
+
+### Faza E — Ruxsatlar va boshqaruv (mavjud dinamik tizimni frontendga chiqarish)
+- **E1. Maxsus lavozim yaratish interfeysi** — backend (`Permission`/`Role`/`RolePermission`) allaqachon tayyor, endi egasi o'zi checkbox orqali lavozim yaratishi mumkin
+- **E2. Audit-log ko'rish sahifasi** — filtrlar bilan, backend allaqachon tayyor
+- **E3. API kalitlar** — kelajakdagi integratsiyalar (fiskal, to'lov tizimlari) uchun poydevor
+
+### Faza F — Onboarding va sayqallash
+- **F1. Kontekstual onboarding** — yangi kompaniya uchun bosqichma-bosqich yo'l-yo'riq
+- **F2. Klaviatura qisqartmalari** — kuchli foydalanuvchilar uchun
+- **F3. Bo'sh holat/xato UX**ni yanada chuqurlashtirish
+
+**Bajarish tartibi:** Faza A → B → C → D → E → F, har bir band alohida, test bilan, avvalgisiga tegmasdan qo'shiladi.
