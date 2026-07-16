@@ -150,7 +150,7 @@ function roleLabelText(role) {
 
 // ---------- Rolga qarab qaysi tab/bo'lim ko'rinishini belgilash ----------
 const ROLE_VISIBILITY = {
-  owner: ["inventory", "finance", "pms", "employees", "settings", "suppliers"],
+  owner: ["inventory", "finance", "pms", "employees", "settings", "suppliers", "audit"],
   cashier: [],
   storekeeper: ["inventory", "suppliers"],
   receptionist: ["pms"],
@@ -258,6 +258,7 @@ function loadCurrentView() {
   if (view === "hrms") loadHrmsView();
   if (view === "pms") loadPmsView();
   if (view === "settings") loadSettingsView();
+  if (view === "audit") loadAuditView(1, "");
 }
 
 function money(n) {
@@ -446,6 +447,11 @@ function auditActionText(action) {
     "employee.reactivate": "Xodim qayta faollashtirildi",
     "sale.create": "Sotuv amalga oshirildi",
     "booking.checkout": "Mehmon chiqarildi",
+    "expense.create": "Xarajat qo'shildi",
+    "recurring_expense.create": "Takrorlanuvchi xarajat yaratildi",
+    "payroll.pay": "Ish haqi to'landi",
+    "purchase_order.receive": "Xarid buyurtmasi qabul qilindi",
+    "company.update": "Kompaniya profili yangilandi",
   };
   return map[action] || action;
 }
@@ -1377,6 +1383,33 @@ document.getElementById("companyForm").addEventListener("submit", async (e) => {
     toast(err.message, "error");
   }
 });
+
+// =========================================================
+// AUDIT (TARIX)
+// =========================================================
+let auditState = { page: 1, search: "" };
+
+async function loadAuditView(page = auditState.page, search = auditState.search) {
+  auditState = { page, search };
+  try {
+    const response = await api(`/audit-log?page=${page}&page_size=10&search=${encodeURIComponent(search)}`);
+    const tbody = document.querySelector("#auditTable tbody");
+    tbody.innerHTML = response.items
+      .map((e) => `
+        <tr>
+          <td>${auditActionText(e.action)}</td>
+          <td style="color:var(--ink-soft); font-size:0.85rem;">${e.details || "-"}</td>
+          <td>${new Date(e.created_at).toLocaleString("uz-UZ")}</td>
+        </tr>`)
+      .join("");
+    showEmptyState("auditTable", "auditEmptyState", response.items.length === 0);
+    renderPagination("auditPagination", response.page, response.total_pages, (p) => loadAuditView(p, search));
+  } catch (_) { /* audit.view ruxsati yo'q */ }
+}
+
+document.getElementById("auditSearchInput").addEventListener("input", debounce((e) => {
+  loadAuditView(1, e.target.value.trim());
+}, 350));
 
 // ---------- Ilova ishga tushishi ----------
 if (isLoggedIn()) {

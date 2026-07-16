@@ -105,6 +105,10 @@
         <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         Sozlamalar
       </button>
+      <button class="nav-item" data-view="audit" data-role-gate="audit">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+        Tarix
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -460,6 +464,29 @@
             </label>
             <button type="submit" class="btn-primary">Saqlash</button>
           </form>
+        </div>
+      </section>
+
+      <!-- AUDIT (TARIX) -->
+      <section id="view-audit" class="view">
+        <div class="view-header">
+          <div><h2>Tarix</h2><div class="view-subtitle">Kompaniyadagi muhim amallar tarixi</div></div>
+        </div>
+
+        <div class="card">
+          <div class="search-bar">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="auditSearchInput" placeholder="Amal turi bo'yicha qidirish (masalan sale, employee)..." />
+          </div>
+          <table class="data-table" id="auditTable">
+            <thead><tr><th>Amal</th><th>Tafsilot</th><th>Vaqti</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div id="auditEmptyState" class="empty-state hidden">
+            <div class="empty-title">Hali hech qanday voqea yo'q</div>
+            <div class="empty-hint">Tizimda amallar bajarilgan sari bu yerda ko'rinadi</div>
+          </div>
+          <div class="pagination" id="auditPagination"></div>
         </div>
       </section>
 
