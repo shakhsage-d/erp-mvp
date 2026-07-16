@@ -288,6 +288,101 @@ function showEmptyState(tableId, emptyId, isEmpty) {
 }
 
 // =========================================================
+// GLOBAL QIDIRUV (topbar)
+// =========================================================
+function switchToView(viewName) {
+  document.querySelectorAll(".nav-item").forEach((t) => t.classList.remove("active"));
+  document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+  document.querySelector(`.nav-item[data-view="${viewName}"]`)?.classList.add("active");
+  document.getElementById(`view-${viewName}`)?.classList.add("active");
+  loadCurrentView();
+}
+
+async function runGlobalSearch(query) {
+  const panel = document.getElementById("globalSearchPanel");
+  if (query.length < 2) {
+    panel.classList.add("hidden");
+    return;
+  }
+
+  const sections = [];
+
+  try {
+    const products = await api(`/inventory/products?search=${encodeURIComponent(query)}&page_size=5`);
+    if (products.items.length > 0) {
+      sections.push({
+        title: "Mahsulotlar",
+        items: products.items.map((p) => ({
+          label: p.name,
+          detail: `qoldiq: ${p.quantity}`,
+          view: "inventory",
+        })),
+      });
+    }
+  } catch (_) { /* jim */ }
+
+  try {
+    const transactions = await api(`/finance/transactions?search=${encodeURIComponent(query)}&page_size=5`);
+    if (transactions.items.length > 0) {
+      sections.push({
+        title: "Tranzaksiyalar",
+        items: transactions.items.map((t) => ({
+          label: t.source || (t.type === "income" ? "Kirim" : "Chiqim"),
+          detail: money(t.amount) + " so'm",
+          view: "finance",
+        })),
+      });
+    }
+  } catch (_) { /* finance.view ruxsati yo'q */ }
+
+  try {
+    const employees = await api("/auth/users");
+    const matches = employees.filter((e) =>
+      e.full_name.toLowerCase().includes(query.toLowerCase()) || e.phone.includes(query)
+    ).slice(0, 5);
+    if (matches.length > 0) {
+      sections.push({
+        title: "Xodimlar",
+        items: matches.map((e) => ({
+          label: e.full_name,
+          detail: roleLabelText(e.role),
+          view: "hrms",
+        })),
+      });
+    }
+  } catch (_) { /* employees.manage ruxsati yo'q */ }
+
+  if (sections.length === 0) {
+    panel.innerHTML = `<div class="notif-panel-header">Natija topilmadi</div>`;
+  } else {
+    panel.innerHTML = sections
+      .map((s) => `
+        <div class="notif-panel-header">${s.title}</div>
+        <ul class="notif-list">
+          ${s.items.map((item) => `
+            <li onclick="switchToView('${item.view}'); document.getElementById('globalSearchPanel').classList.add('hidden'); document.getElementById('globalSearchInput').value='';">
+              <span>${item.label}</span>
+              <span style="color:var(--ink-soft);">${item.detail}</span>
+            </li>`).join("")}
+        </ul>`)
+      .join("");
+  }
+  panel.classList.remove("hidden");
+}
+
+document.getElementById("globalSearchInput").addEventListener("input", debounce((e) => {
+  runGlobalSearch(e.target.value.trim());
+}, 350));
+
+document.addEventListener("click", (e) => {
+  const panel = document.getElementById("globalSearchPanel");
+  const input = document.getElementById("globalSearchInput");
+  if (!panel.classList.contains("hidden") && !panel.contains(e.target) && e.target !== input) {
+    panel.classList.add("hidden");
+  }
+});
+
+// =========================================================
 // BILDIRISHNOMALAR (past qoldiq ogohlantirishi)
 // =========================================================
 let notificationsCache = [];
