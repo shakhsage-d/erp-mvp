@@ -237,7 +237,17 @@ def create_employee(
     if existing:
         raise ConflictError("Bu telefon raqami bilan foydalanuvchi allaqachon ro'yxatdan o'tgan")
 
-    role = get_default_role(db, payload.role)
+    if payload.custom_role_id:
+        role = db.query(models.Role).filter(
+            models.Role.id == payload.custom_role_id,
+            models.Role.company_id == company_id,  # faqat SHU kompaniyaning o'z lavozimi
+        ).first()
+        if not role:
+            raise NotFoundError("Ko'rsatilgan maxsus lavozim topilmadi")
+    elif payload.role:
+        role = get_default_role(db, payload.role)
+    else:
+        raise ConflictError("Lavozim ko'rsatilishi shart (role yoki custom_role_id)")
 
     user = models.User(
         company_id=company_id,
@@ -343,6 +353,14 @@ def update_employee(
 
     if payload.role:
         new_role = get_default_role(db, payload.role)
+        user.role_id = new_role.id
+    elif payload.custom_role_id:
+        new_role = db.query(models.Role).filter(
+            models.Role.id == payload.custom_role_id,
+            models.Role.company_id == company_id,
+        ).first()
+        if not new_role:
+            raise NotFoundError("Ko'rsatilgan maxsus lavozim topilmadi")
         user.role_id = new_role.id
 
     if payload.hourly_rate is not None:

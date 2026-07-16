@@ -1079,7 +1079,23 @@ async function loadHrmsView() {
           </tr>`)
         .join("");
     } catch (_) { /* ruxsat yo'q bo'lsa jim o'tkazib yuboriladi */ }
+
+    await loadRoles();
   }
+}
+
+async function loadRoles() {
+  try {
+    const roles = await api("/roles");
+    const tbody = document.querySelector("#rolesTable tbody");
+    tbody.innerHTML = roles
+      .map((r) => `
+        <tr>
+          <td>${roleLabelText(r.name)} ${r.is_custom ? "" : `<span style="color:var(--ink-soft); font-size:0.78rem;">(standart)</span>`}</td>
+          <td style="font-size:0.8rem; color:var(--ink-soft);">${r.permission_codes.join(", ") || "—"}</td>
+        </tr>`)
+      .join("");
+  } catch (_) { /* roles.manage ruxsati yo'q */ }
 }
 
 async function deactivateEmployee(userId) {
@@ -1134,23 +1150,33 @@ document.getElementById("clockOutBtn").addEventListener("click", async () => {
   }
 });
 
-document.getElementById("openEmployeeModalBtn").addEventListener("click", () => {
+document.getElementById("openEmployeeModalBtn").addEventListener("click", async () => {
+  let roleOptions = `
+    <option value="default:cashier">Sotuvchi</option>
+    <option value="default:storekeeper">Omborchi</option>
+    <option value="default:receptionist">Resepshin (mehmonxona)</option>
+  `;
+  try {
+    const roles = await api("/roles");
+    const customRoles = roles.filter((r) => r.is_custom);
+    if (customRoles.length > 0) {
+      roleOptions += customRoles.map((r) => `<option value="custom:${r.id}">${r.name}</option>`).join("");
+    }
+  } catch (_) { /* jim */ }
+
   openModal("Yangi xodim qo'shish", `
     <label>F.I.Sh. <input type="text" name="full_name" required /></label>
     <label>Telefon raqami <input type="text" name="phone" required /></label>
     <label>Parol <input type="password" name="password" minlength="6" required /></label>
     <label>Lavozim
-      <select name="role">
-        <option value="cashier">Sotuvchi</option>
-        <option value="storekeeper">Omborchi</option>
-        <option value="receptionist">Resepshin (mehmonxona)</option>
-      </select>
+      <select name="role_choice">${roleOptions}</select>
     </label>
     <label>Soatlik stavka (ish haqi hisoblash uchun, ixtiyoriy)
       <input type="number" name="hourly_rate" min="0" value="0" />
     </label>
   `, async (form) => {
     const fd = new FormData(form);
+    const [roleKind, roleValue] = fd.get("role_choice").split(":");
     try {
       await api("/auth/users", {
         method: "POST",
@@ -1158,7 +1184,8 @@ document.getElementById("openEmployeeModalBtn").addEventListener("click", () => 
           full_name: fd.get("full_name").trim(),
           phone: fd.get("phone").trim(),
           password: fd.get("password"),
-          role: fd.get("role"),
+          role: roleKind === "default" ? roleValue : null,
+          custom_role_id: roleKind === "custom" ? Number(roleValue) : null,
           hourly_rate: Number(fd.get("hourly_rate")) || 0,
         }),
       });
@@ -1169,6 +1196,45 @@ document.getElementById("openEmployeeModalBtn").addEventListener("click", () => 
       toast(err.message, "error");
     }
   });
+});
+
+document.getElementById("openRoleModalBtn").addEventListener("click", async () => {
+  const permissions = await api("/permissions");
+  const checkboxesHtml = permissions
+    .map((p) => `
+      <label style="flex-direction:row; align-items:center; gap:8px; font-weight:400;">
+        <input type="checkbox" name="permission_codes" value="${p.code}" style="width:auto;" />
+        <span>${p.description || p.code}</span>
+      </label>`)
+    .join("");
+
+  openModal("Yangi lavozim yaratish", `
+    <label>Lavozim nomi <input type="text" name="name" placeholder="Masalan: Katta sotuvchi" required /></label>
+    <div style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius); padding:10px;">
+      ${checkboxesHtml}
+    </div>
+  `, async (form) => {
+    const fd = new FormData(form);
+    const permissionCodes = fd.getAll("permission_codes");
+    if (permissionCodes.length === 0) {
+      toast("Kamida bitta ruxsat tanlang", "error");
+      return;
+    }
+    try {
+      await api("/roles", {
+        method: "POST",
+        body: JSON.stringify({
+          name: fd.get("name").trim(),
+          permission_codes: permissionCodes,
+        }),
+      });
+      toast("Lavozim yaratildi");
+      closeModal();
+      await loadRoles();
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  }, "Yaratish");
 });
 
 // =========================================================

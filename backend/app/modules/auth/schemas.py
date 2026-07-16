@@ -44,10 +44,10 @@ class EmployeeCreateRequest(BaseModel):
     full_name: str = Field(..., min_length=1, max_length=200)
     phone: str = Field(..., min_length=5, max_length=20)
     password: str = Field(..., min_length=6, max_length=100)
-    # Hozircha faqat standart 2 ta lavozim tanlanadi. Kelajakda (HRMS
-    # bosqichida) bu maydon kompaniyaning o'z maxsus lavozimlaridan
-    # birini ham qabul qiladigan bo'ladi (masalan role_id orqali).
-    role: Literal["cashier", "storekeeper", "receptionist"]
+    # Ikkitadan FAQAT BITTASI beriladi: standart lavozim (`role`) YOKI
+    # kompaniyaning o'z yaratgan maxsus lavozimi (`custom_role_id`).
+    role: Literal["cashier", "storekeeper", "receptionist"] | None = None
+    custom_role_id: int | None = Field(default=None, description="Maxsus (o'zi yaratgan) lavozim ID'si")
     hourly_rate: float = Field(default=0.0, ge=0, description="Ish haqi hisoblash uchun, so'm/soat")
 
 
@@ -84,4 +84,5 @@ class EmployeeUpdateRequest(BaseModel):
     # Bu yerdan ham "owner" ATAYLAB chiqarib qoldirilgan — bu endpoint orqali
     # birortaning ham egaga aylantirib bo'lmaydi.
     role: Literal["cashier", "storekeeper", "receptionist"] | None = None
+    custom_role_id: int | None = Field(default=None, description="Maxsus (o'zi yaratgan) lavozim ID'si")
     hourly_rate: float | None = Field(default=None, ge=0)

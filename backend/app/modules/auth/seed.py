@@ -32,6 +32,7 @@ PERMISSION_CATALOG = {
     "audit.view": "Kompaniyadagi muhim amallar tarixini ko'rish",
     "company.manage": "Kompaniya profilini tahrirlash",
     "suppliers.manage": "Ta'minotchilar va xarid buyurtmalarini boshqarish",
+    "roles.manage": "Maxsus lavozimlar yaratish va boshqarish",
 }
 
 # --- Standart lavozimlar va ularning ruxsatlari ---

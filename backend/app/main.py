@@ -45,6 +45,7 @@ from app.modules.hrms.router import router as hrms_router  # noqa: E402
 from app.modules.pms.router import router as pms_router  # noqa: E402
 from app.modules.audit.router import router as audit_router  # noqa: E402
 from app.modules.suppliers.router import router as suppliers_router  # noqa: E402
+from app.modules.roles.router import router as roles_router  # noqa: E402
 
 # MUHIM: Base.metadata.create_all(bind=engine) ATAYLAB OLIB TASHLANDI.
 # Endi baza sxemasining YAGONA manbai — Alembic migratsiyalari
@@ -182,6 +183,7 @@ app.include_router(hrms_router)
 app.include_router(pms_router)
 app.include_router(audit_router)
 app.include_router(suppliers_router)
+app.include_router(roles_router)
 
 
 @app.get("/")
