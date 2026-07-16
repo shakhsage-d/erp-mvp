@@ -14,6 +14,11 @@ class Sale(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     # Kelajakda: fiscal_check_id (davlat OFD tizimi integratsiyasi uchun)
 
+    # Yengil mijoz kuzatuvi (to'liq CRM emas) — ixtiyoriy, faqat egasi
+    # xohlasa to'ldiriladi. "Eng faol mijozlar" hisoboti shu orqali ishlaydi.
+    customer_name = Column(String, nullable=True)
+    customer_phone = Column(String, nullable=True, index=True)
+
 
 class SaleItem(Base):
     """Chekdagi har bir mahsulot qatori."""

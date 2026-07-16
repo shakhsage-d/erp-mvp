@@ -646,12 +646,16 @@ document.getElementById("saleCheckoutBtn").addEventListener("click", async () =>
       method: "POST",
       body: JSON.stringify({
         items: saleCart.map((i) => ({ product_id: i.product_id, quantity: i.qty })),
+        customer_name: document.getElementById("saleCustomerName").value.trim() || null,
+        customer_phone: document.getElementById("saleCustomerPhone").value.trim() || null,
       }),
     });
     toast("Chek muvaffaqiyatli yopildi");
     lastCompletedSale = { sale, items: [...saleCart] };
     document.getElementById("printReceiptBtn").classList.remove("hidden");
     saleCart = [];
+    document.getElementById("saleCustomerName").value = "";
+    document.getElementById("saleCustomerPhone").value = "";
     await loadSalesView();
     refreshNotifications();
   } catch (err) {
@@ -893,7 +897,20 @@ async function loadFinanceView() {
   await loadTransactions(1, "");
   await loadDailySalesChart();
   await loadTopProducts();
+  await loadTopCustomers();
   await loadRecurringExpenses();
+}
+
+async function loadTopCustomers() {
+  try {
+    const data = await api("/sales/analytics/top-customers?days=90&limit=10");
+    const list = document.getElementById("topCustomersList");
+    list.innerHTML = data.length === 0
+      ? `<li style="color:var(--ink-soft);">Hali mijoz ma'lumoti bilan sotuv yo'q</li>`
+      : data
+          .map((c) => `<li><span>${c.customer_name} (${c.purchase_count} marta)</span><span class="mono">${money(c.total_spent)} so'm</span></li>`)
+          .join("");
+  } catch (_) { /* ruxsat yo'q */ }
 }
 
 async function loadRecurringExpenses() {

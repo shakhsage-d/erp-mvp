@@ -64,7 +64,11 @@ def create_sale(
         raise EmptyRequestError("Chekda mahsulot yo'q")
 
     total_amount = 0.0
-    sale = sales_models.Sale(company_id=company_id, total_amount=0.0)
+    sale = sales_models.Sale(
+        company_id=company_id, total_amount=0.0,
+        customer_name=sale_request.customer_name,
+        customer_phone=sale_request.customer_phone,
+    )
     db.add(sale)
     db.flush()  # sale.id ni olish uchun, hali commit qilmasdan
 
@@ -190,6 +194,54 @@ def top_products_analytics(
         schemas.TopProductItem(
             product_id=row[0], product_name=row[1],
             total_quantity=float(row[2] or 0), total_revenue=float(row[3] or 0),
+        )
+        for row in rows
+    ]
+
+
+@router.get(
+    "/analytics/top-customers",
+    response_model=list[schemas.TopCustomerItem],
+    summary="Eng faol mijozlar",
+)
+def top_customers_analytics(
+    days: int = Query(default=90, ge=1, le=365, description="Necha kunlik tarix"),
+    limit: int = Query(default=10, ge=1, le=50),
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    _: None = Depends(require_permission("finance.view")),
+):
+    """
+    Mijoz ma'lumoti (ixtiyoriy) kiritilgan cheklar bo'yicha, eng ko'p
+    xarid qilgan mijozlar ro'yxati — telefon raqami bo'yicha guruhlanadi
+    (agar telefon bo'lmasa, ism bo'yicha).
+    """
+    since = datetime.utcnow() - timedelta(days=days)
+
+    rows = (
+        db.query(
+            sales_models.Sale.customer_name,
+            sales_models.Sale.customer_phone,
+            func.sum(sales_models.Sale.total_amount).label("total_spent"),
+            func.count(sales_models.Sale.id).label("purchase_count"),
+        )
+        .filter(
+            sales_models.Sale.company_id == company_id,
+            sales_models.Sale.created_at >= since,
+            sales_models.Sale.customer_phone.isnot(None),
+        )
+        .group_by(sales_models.Sale.customer_name, sales_models.Sale.customer_phone)
+        .order_by(func.sum(sales_models.Sale.total_amount).desc())
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        schemas.TopCustomerItem(
+            customer_name=row[0] or "Noma'lum",
+            customer_phone=row[1],
+            total_spent=float(row[2] or 0),
+            purchase_count=row[3],
         )
         for row in rows
     ]
