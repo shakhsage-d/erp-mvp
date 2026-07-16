@@ -541,6 +541,52 @@ async function loadHomeView() {
 }
 
 // =========================================================
+// CSV EKSPORT (umumiy yordamchi)
+// =========================================================
+function downloadCSV(filename, rows) {
+  const csvContent = rows
+    .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  // \uFEFF — Excel'da o'zbekcha harflar (masalan o', g') to'g'ri ko'rinishi uchun (UTF-8 BOM)
+  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById("exportProductsCsvBtn").addEventListener("click", async () => {
+  try {
+    const response = await api(`/inventory/products?page_size=1000&search=${encodeURIComponent(inventoryState.search || "")}`);
+    const rows = [["Nomi", "Birligi", "Tannarx", "Sotish narxi", "Qoldiq"]];
+    response.items.forEach((p) => rows.push([p.name, p.unit, p.purchase_price, p.sale_price, p.quantity]));
+    downloadCSV(`mahsulotlar_${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    toast("CSV fayl yuklab olindi");
+  } catch (err) {
+    toast(err.message, "error");
+  }
+});
+
+document.getElementById("exportTransactionsCsvBtn").addEventListener("click", async () => {
+  try {
+    const response = await api(`/finance/transactions?page_size=1000&search=${encodeURIComponent(financeState.search || "")}`);
+    const rows = [["Turi", "Summasi", "Manbasi", "Vaqti"]];
+    response.items.forEach((t) => rows.push([
+      t.type === "income" ? "Kirim" : "Chiqim",
+      t.amount,
+      t.source || "",
+      new Date(t.created_at).toLocaleString("uz-UZ"),
+    ]));
+    downloadCSV(`tranzaksiyalar_${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    toast("CSV fayl yuklab olindi");
+  } catch (err) {
+    toast(err.message, "error");
+  }
+});
+
+// =========================================================
 // SAVDO
 // =========================================================
 let saleCart = [];

@@ -199,6 +199,9 @@
         <div class="view-header">
           <div><h2>Ombor</h2><div class="view-subtitle">Mahsulotlar va qoldiq</div></div>
           <div style="display:flex; gap:8px;">
+            <button class="btn-icon" id="exportProductsCsvBtn" title="CSV yuklab olish">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
             <button class="btn-icon" id="openStockInModalBtn" title="Omborga kirim">
               <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12l7 7 7-7"/></svg>
             </button>
@@ -230,9 +233,14 @@
       <section id="view-finance" class="view">
         <div class="view-header">
           <div><h2>Moliya xulosasi</h2><div class="view-subtitle">Kirim, chiqim va tendensiya</div></div>
-          <button class="btn-icon" id="openExpenseModalBtn" title="Chiqim qo'shish">
-            <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-icon" id="exportTransactionsCsvBtn" title="CSV yuklab olish">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button class="btn-icon" id="openExpenseModalBtn" title="Chiqim qo'shish">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
         </div>
         <div class="stat-row">
           <div class="stat-card">
