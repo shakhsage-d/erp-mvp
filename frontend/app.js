@@ -140,6 +140,7 @@ function showAppShell() {
   document.getElementById("userAvatar").textContent = companyName.charAt(0).toUpperCase() || "U";
   applyRoleGates();
   loadCurrentView();
+  refreshNotifications();
 }
 
 function roleLabelText(role) {
@@ -285,6 +286,55 @@ function showEmptyState(tableId, emptyId, isEmpty) {
   document.getElementById(tableId).classList.toggle("hidden", isEmpty);
   document.getElementById(emptyId)?.classList.toggle("hidden", !isEmpty);
 }
+
+// =========================================================
+// BILDIRISHNOMALAR (past qoldiq ogohlantirishi)
+// =========================================================
+let notificationsCache = [];
+
+async function refreshNotifications() {
+  try {
+    const response = await api("/inventory/products?page_size=100");
+    const lowStock = response.items.filter((p) => p.quantity < LOW_STOCK_THRESHOLD);
+    notificationsCache = lowStock.map((p) => ({
+      text: `"${p.name}" kam qoldi`,
+      detail: `${p.quantity} ${p.unit}`,
+    }));
+
+    const badge = document.getElementById("notifBadge");
+    if (notificationsCache.length > 0) {
+      badge.textContent = notificationsCache.length;
+      badge.classList.remove("hidden");
+    } else {
+      badge.classList.add("hidden");
+    }
+  } catch (_) { /* ruxsat yo'q bo'lsa jim o'tkaziladi */ }
+}
+
+function renderNotificationPanel() {
+  const list = document.getElementById("notifList");
+  list.innerHTML = notificationsCache.length === 0
+    ? `<li class="notif-empty">Hozircha bildirishnoma yo'q</li>`
+    : notificationsCache
+        .map((n) => `<li><span>${n.text}</span><span class="mono" style="color:var(--ink-soft);">${n.detail}</span></li>`)
+        .join("");
+}
+
+document.getElementById("notifBellBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const panel = document.getElementById("notifPanel");
+  const willOpen = panel.classList.contains("hidden");
+  if (willOpen) renderNotificationPanel();
+  panel.classList.toggle("hidden");
+});
+
+document.addEventListener("click", (e) => {
+  const panel = document.getElementById("notifPanel");
+  const bell = document.getElementById("notifBellBtn");
+  if (!panel.classList.contains("hidden") && !panel.contains(e.target) && !bell.contains(e.target)) {
+    panel.classList.add("hidden");
+  }
+});
 
 // =========================================================
 // BOSH SAHIFA (Dashboard Home)
@@ -458,6 +508,7 @@ document.getElementById("saleCheckoutBtn").addEventListener("click", async () =>
     toast("Chek muvaffaqiyatli yopildi");
     saleCart = [];
     await loadSalesView();
+    refreshNotifications();
   } catch (err) {
     toast(err.message, "error");
   }
@@ -516,6 +567,7 @@ document.getElementById("openProductModalBtn").addEventListener("click", () => {
       toast("Mahsulot qo'shildi");
       closeModal();
       await loadInventoryView(1, inventoryState.search);
+      refreshNotifications();
     } catch (err) {
       toast(err.message, "error");
     }
@@ -543,6 +595,7 @@ document.getElementById("openStockInModalBtn").addEventListener("click", async (
       toast("Kirim qilindi");
       closeModal();
       await loadInventoryView(inventoryState.page, inventoryState.search);
+      refreshNotifications();
     } catch (err) {
       toast(err.message, "error");
     }

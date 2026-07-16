@@ -319,8 +319,6 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .topbar-title { font-size: 1.05rem; font-weight: 700; }
 
 .notif-wrap { position: relative; }
-.global-search-wrap { position: relative; }
-.global-search-wrap .notif-panel { left: 0; right: auto; width: 340px; top: 46px; }
 .notif-bell {
   background: transparent;
   border: 1px solid var(--border);
