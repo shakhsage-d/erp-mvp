@@ -642,19 +642,54 @@ document.getElementById("saleCheckoutBtn").addEventListener("click", async () =>
     return;
   }
   try {
-    await api("/sales/", {
+    const sale = await api("/sales/", {
       method: "POST",
       body: JSON.stringify({
         items: saleCart.map((i) => ({ product_id: i.product_id, quantity: i.qty })),
       }),
     });
     toast("Chek muvaffaqiyatli yopildi");
+    lastCompletedSale = { sale, items: [...saleCart] };
+    document.getElementById("printReceiptBtn").classList.remove("hidden");
     saleCart = [];
     await loadSalesView();
     refreshNotifications();
   } catch (err) {
     toast(err.message, "error");
   }
+});
+
+let lastCompletedSale = null;
+
+document.getElementById("printReceiptBtn").addEventListener("click", () => {
+  if (!lastCompletedSale) return;
+
+  const { sale, items } = lastCompletedSale;
+  const total = items.reduce((sum, i) => sum + i.price * i.qty, 0);
+
+  const rowsHtml = items
+    .map((i) => `
+      <tr>
+        <td>${i.name}</td>
+        <td style="text-align:right;">${i.qty}</td>
+        <td style="text-align:right;">${money(i.price * i.qty)}</td>
+      </tr>`)
+    .join("");
+
+  document.getElementById("receiptPrintArea").innerHTML = `
+    <h2>${getCompanyName() || "Ustun"}</h2>
+    <div class="receipt-meta">Chek #${sale.id} — ${new Date(sale.created_at).toLocaleString("uz-UZ")}</div>
+    <table>
+      <thead><tr><th>Mahsulot</th><th style="text-align:right;">Miqdor</th><th style="text-align:right;">Summa</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    <div class="receipt-total"><span>JAMI:</span><span>${money(total)} so'm</span></div>
+    <div class="receipt-footer">Xaridingiz uchun rahmat!</div>
+  `;
+
+  document.body.classList.add("printing-receipt");
+  window.print();
+  setTimeout(() => document.body.classList.remove("printing-receipt"), 500);
 });
 
 // =========================================================

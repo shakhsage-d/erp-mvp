@@ -692,6 +692,26 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   .gauge-wrap { flex-direction: column; align-items: flex-start; gap: 8px; }
 }
 
+/* ---------- Chek chop etish ---------- */
+#receiptPrintArea { display: none; }
+
+@media print {
+  body.printing-receipt > *:not(#receiptPrintArea) { display: none !important; }
+  body.printing-receipt #receiptPrintArea {
+    display: block !important;
+    font-family: var(--font-mono);
+    max-width: 320px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  #receiptPrintArea h2 { text-align: center; font-size: 1rem; margin-bottom: 2px; }
+  #receiptPrintArea .receipt-meta { text-align: center; font-size: 0.75rem; color: #444; margin-bottom: 12px; }
+  #receiptPrintArea table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  #receiptPrintArea th, #receiptPrintArea td { padding: 4px 0; text-align: left; }
+  #receiptPrintArea .receipt-total { border-top: 1px dashed #000; margin-top: 8px; padding-top: 8px; font-weight: 700; display: flex; justify-content: space-between; }
+  #receiptPrintArea .receipt-footer { text-align: center; margin-top: 16px; font-size: 0.75rem; }
+}
+
 /* ---------- Focus ko'rinishi (a11y) ---------- */
 button:focus-visible, input:focus-visible, select:focus-visible {
   outline: 2px solid var(--primary);
