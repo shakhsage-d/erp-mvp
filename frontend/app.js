@@ -1411,6 +1411,28 @@ document.getElementById("auditSearchInput").addEventListener("input", debounce((
   loadAuditView(1, e.target.value.trim());
 }, 350));
 
+// =========================================================
+// KLAVIATURA QISQARTMALARI
+// =========================================================
+document.addEventListener("keydown", (e) => {
+  const activeTag = document.activeElement?.tagName;
+  const isTypingSomewhere = activeTag === "INPUT" || activeTag === "SELECT" || activeTag === "TEXTAREA";
+
+  // Esc — modal, bildirishnoma va qidiruv panellarini yopadi
+  if (e.key === "Escape") {
+    closeModal();
+    document.getElementById("notifPanel")?.classList.add("hidden");
+    document.getElementById("globalSearchPanel")?.classList.add("hidden");
+    return;
+  }
+
+  // "/" — hech qanday maydonga yozayotgan bo'lmasa, global qidiruvga o'tkazadi
+  if (e.key === "/" && !isTypingSomewhere) {
+    e.preventDefault();
+    document.getElementById("globalSearchInput")?.focus();
+  }
+});
+
 // ---------- Ilova ishga tushishi ----------
 if (isLoggedIn()) {
   showAppShell();
