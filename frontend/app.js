@@ -140,7 +140,6 @@ function showAppShell() {
   document.getElementById("userAvatar").textContent = companyName.charAt(0).toUpperCase() || "U";
   applyRoleGates();
   loadCurrentView();
-  refreshNotifications();
 }
 
 function roleLabelText(role) {
@@ -286,150 +285,6 @@ function showEmptyState(tableId, emptyId, isEmpty) {
   document.getElementById(tableId).classList.toggle("hidden", isEmpty);
   document.getElementById(emptyId)?.classList.toggle("hidden", !isEmpty);
 }
-
-// =========================================================
-// GLOBAL QIDIRUV (topbar)
-// =========================================================
-function switchToView(viewName) {
-  document.querySelectorAll(".nav-item").forEach((t) => t.classList.remove("active"));
-  document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
-  document.querySelector(`.nav-item[data-view="${viewName}"]`)?.classList.add("active");
-  document.getElementById(`view-${viewName}`)?.classList.add("active");
-  loadCurrentView();
-}
-
-async function runGlobalSearch(query) {
-  const panel = document.getElementById("globalSearchPanel");
-  if (query.length < 2) {
-    panel.classList.add("hidden");
-    return;
-  }
-
-  const sections = [];
-
-  try {
-    const products = await api(`/inventory/products?search=${encodeURIComponent(query)}&page_size=5`);
-    if (products.items.length > 0) {
-      sections.push({
-        title: "Mahsulotlar",
-        items: products.items.map((p) => ({
-          label: p.name,
-          detail: `qoldiq: ${p.quantity}`,
-          view: "inventory",
-        })),
-      });
-    }
-  } catch (_) { /* jim */ }
-
-  try {
-    const transactions = await api(`/finance/transactions?search=${encodeURIComponent(query)}&page_size=5`);
-    if (transactions.items.length > 0) {
-      sections.push({
-        title: "Tranzaksiyalar",
-        items: transactions.items.map((t) => ({
-          label: t.source || (t.type === "income" ? "Kirim" : "Chiqim"),
-          detail: money(t.amount) + " so'm",
-          view: "finance",
-        })),
-      });
-    }
-  } catch (_) { /* finance.view ruxsati yo'q */ }
-
-  try {
-    const employees = await api("/auth/users");
-    const matches = employees.filter((e) =>
-      e.full_name.toLowerCase().includes(query.toLowerCase()) || e.phone.includes(query)
-    ).slice(0, 5);
-    if (matches.length > 0) {
-      sections.push({
-        title: "Xodimlar",
-        items: matches.map((e) => ({
-          label: e.full_name,
-          detail: roleLabelText(e.role),
-          view: "hrms",
-        })),
-      });
-    }
-  } catch (_) { /* employees.manage ruxsati yo'q */ }
-
-  if (sections.length === 0) {
-    panel.innerHTML = `<div class="notif-panel-header">Natija topilmadi</div>`;
-  } else {
-    panel.innerHTML = sections
-      .map((s) => `
-        <div class="notif-panel-header">${s.title}</div>
-        <ul class="notif-list">
-          ${s.items.map((item) => `
-            <li onclick="switchToView('${item.view}'); document.getElementById('globalSearchPanel').classList.add('hidden'); document.getElementById('globalSearchInput').value='';">
-              <span>${item.label}</span>
-              <span style="color:var(--ink-soft);">${item.detail}</span>
-            </li>`).join("")}
-        </ul>`)
-      .join("");
-  }
-  panel.classList.remove("hidden");
-}
-
-document.getElementById("globalSearchInput").addEventListener("input", debounce((e) => {
-  runGlobalSearch(e.target.value.trim());
-}, 350));
-
-document.addEventListener("click", (e) => {
-  const panel = document.getElementById("globalSearchPanel");
-  const input = document.getElementById("globalSearchInput");
-  if (!panel.classList.contains("hidden") && !panel.contains(e.target) && e.target !== input) {
-    panel.classList.add("hidden");
-  }
-});
-
-// =========================================================
-// BILDIRISHNOMALAR (past qoldiq ogohlantirishi)
-// =========================================================
-let notificationsCache = [];
-
-async function refreshNotifications() {
-  try {
-    const response = await api("/inventory/products?page_size=100");
-    const lowStock = response.items.filter((p) => p.quantity < LOW_STOCK_THRESHOLD);
-    notificationsCache = lowStock.map((p) => ({
-      text: `"${p.name}" kam qoldi`,
-      detail: `${p.quantity} ${p.unit}`,
-    }));
-
-    const badge = document.getElementById("notifBadge");
-    if (notificationsCache.length > 0) {
-      badge.textContent = notificationsCache.length;
-      badge.classList.remove("hidden");
-    } else {
-      badge.classList.add("hidden");
-    }
-  } catch (_) { /* ruxsat yo'q bo'lsa jim o'tkaziladi */ }
-}
-
-function renderNotificationPanel() {
-  const list = document.getElementById("notifList");
-  list.innerHTML = notificationsCache.length === 0
-    ? `<li class="notif-empty">Hozircha bildirishnoma yo'q</li>`
-    : notificationsCache
-        .map((n) => `<li><span>${n.text}</span><span class="mono" style="color:var(--ink-soft);">${n.detail}</span></li>`)
-        .join("");
-}
-
-document.getElementById("notifBellBtn").addEventListener("click", (e) => {
-  e.stopPropagation();
-  const panel = document.getElementById("notifPanel");
-  const willOpen = panel.classList.contains("hidden");
-  if (willOpen) renderNotificationPanel();
-  panel.classList.toggle("hidden");
-});
-
-document.addEventListener("click", (e) => {
-  const panel = document.getElementById("notifPanel");
-  const bell = document.getElementById("notifBellBtn");
-  if (!panel.classList.contains("hidden") && !panel.contains(e.target) && !bell.contains(e.target)) {
-    panel.classList.add("hidden");
-  }
-});
 
 // =========================================================
 // BOSH SAHIFA (Dashboard Home)
@@ -603,7 +458,6 @@ document.getElementById("saleCheckoutBtn").addEventListener("click", async () =>
     toast("Chek muvaffaqiyatli yopildi");
     saleCart = [];
     await loadSalesView();
-    refreshNotifications();
   } catch (err) {
     toast(err.message, "error");
   }
@@ -662,7 +516,6 @@ document.getElementById("openProductModalBtn").addEventListener("click", () => {
       toast("Mahsulot qo'shildi");
       closeModal();
       await loadInventoryView(1, inventoryState.search);
-      refreshNotifications();
     } catch (err) {
       toast(err.message, "error");
     }
@@ -690,7 +543,6 @@ document.getElementById("openStockInModalBtn").addEventListener("click", async (
       toast("Kirim qilindi");
       closeModal();
       await loadInventoryView(inventoryState.page, inventoryState.search);
-      refreshNotifications();
     } catch (err) {
       toast(err.message, "error");
     }
