@@ -150,7 +150,7 @@ function roleLabelText(role) {
 
 // ---------- Rolga qarab qaysi tab/bo'lim ko'rinishini belgilash ----------
 const ROLE_VISIBILITY = {
-  owner: ["inventory", "finance", "pms", "employees"],
+  owner: ["inventory", "finance", "pms", "employees", "settings"],
   cashier: [],
   storekeeper: ["inventory"],
   receptionist: ["pms"],
@@ -256,6 +256,7 @@ function loadCurrentView() {
   if (view === "finance") loadFinanceView();
   if (view === "hrms") loadHrmsView();
   if (view === "pms") loadPmsView();
+  if (view === "settings") loadSettingsView();
 }
 
 function money(n) {
@@ -1010,6 +1011,36 @@ async function checkoutBooking(bookingId) {
     toast(err.message, "error");
   }
 }
+
+// =========================================================
+// SOZLAMALAR
+// =========================================================
+async function loadSettingsView() {
+  const company = await api("/auth/company");
+  document.getElementById("settingsCompanyName").value = company.name;
+  document.getElementById("settingsBusinessType").value = company.business_type;
+  document.getElementById("settingsTaxId").value = company.tax_id || "";
+}
+
+document.getElementById("companyForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    const data = await api("/auth/company", {
+      method: "PATCH",
+      body: JSON.stringify({
+        name: document.getElementById("settingsCompanyName").value.trim(),
+        business_type: document.getElementById("settingsBusinessType").value,
+        tax_id: document.getElementById("settingsTaxId").value.trim() || null,
+      }),
+    });
+    localStorage.setItem("ustun_company_name", data.name);
+    document.getElementById("companyNameLabel").textContent = data.name;
+    document.getElementById("userAvatar").textContent = data.name.charAt(0).toUpperCase();
+    toast("Sozlamalar saqlandi");
+  } catch (err) {
+    toast(err.message, "error");
+  }
+});
 
 // ---------- Ilova ishga tushishi ----------
 if (isLoggedIn()) {

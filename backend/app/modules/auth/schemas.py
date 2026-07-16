@@ -60,6 +60,21 @@ class EmployeeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CompanyOut(BaseModel):
+    id: int
+    name: str
+    business_type: str
+    tax_id: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CompanyUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    business_type: str | None = Field(default=None, max_length=50)
+    tax_id: str | None = Field(default=None, max_length=50)
+
+
 class EmployeeUpdateRequest(BaseModel):
     """Barcha maydonlar ixtiyoriy — faqat o'zgartirilishi kerak bo'lganlari yuboriladi."""
     full_name: str | None = Field(default=None, min_length=1, max_length=200)

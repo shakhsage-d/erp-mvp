@@ -445,3 +445,57 @@ def reactivate_employee(
         id=user.id, full_name=user.full_name, phone=user.phone,
         role=role.name if role else "noma'lum", is_active=True,
     )
+
+
+@router.get(
+    "/company",
+    response_model=schemas.CompanyOut,
+    summary="Kompaniya profilini ko'rish",
+)
+def get_company(
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+):
+    """Har qanday autentifikatsiyadan o'tgan foydalanuvchi o'z kompaniyasi
+    profilini ko'ra oladi (faqat ko'rish, tahrirlash uchun ruxsat kerak)."""
+    company = db.query(models.Company).filter(models.Company.id == company_id).first()
+    if not company:
+        raise NotFoundError("Kompaniya topilmadi")
+    return company
+
+
+@router.patch(
+    "/company",
+    response_model=schemas.CompanyOut,
+    summary="Kompaniya profilini tahrirlash",
+)
+def update_company(
+    payload: schemas.CompanyUpdateRequest,
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    actor_id: int = Depends(get_current_user_id),
+    _: None = Depends(require_permission("company.manage")),
+):
+    """Kompaniya nomi, biznes turi va soliq ID'sini tahrirlaydi."""
+    company = db.query(models.Company).filter(models.Company.id == company_id).first()
+    if not company:
+        raise NotFoundError("Kompaniya topilmadi")
+
+    if payload.name:
+        company.name = payload.name
+    if payload.business_type:
+        company.business_type = payload.business_type
+    if payload.tax_id is not None:
+        company.tax_id = payload.tax_id
+
+    record_audit(
+        db, company_id, actor_id, "company.update",
+        entity_type="company", entity_id=company.id,
+        details="Kompaniya profili yangilandi",
+    )
+
+    db.commit()
+    db.refresh(company)
+
+    logger.info("Kompaniya profili yangilandi: company=%s", company_id)
+    return company

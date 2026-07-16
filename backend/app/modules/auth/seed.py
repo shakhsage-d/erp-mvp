@@ -29,6 +29,7 @@ PERMISSION_CATALOG = {
     "hrms.view_all": "Barcha xodimlarning ish vaqti (smena) tarixini ko'rish",
     "pms.manage": "Mehmonxona xonalari va bronlarni boshqarish",
     "audit.view": "Kompaniyadagi muhim amallar tarixini ko'rish",
+    "company.manage": "Kompaniya profilini tahrirlash",
 }
 
 # --- Standart lavozimlar va ularning ruxsatlari ---
