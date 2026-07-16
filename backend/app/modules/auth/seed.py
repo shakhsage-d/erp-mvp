@@ -24,6 +24,7 @@ PERMISSION_CATALOG = {
     "inventory.manage": "Mahsulot qo'shish va omborga kirim qilish",
     "sales.create": "Sotuv (chek) amalga oshirish",
     "finance.view": "Moliyaviy hisobot va tranzaksiyalarni ko'rish",
+    "finance.manage": "Qo'lda xarajat (chiqim) qo'shish",
     "employees.manage": "Xodim qo'shish va ro'yxatini ko'rish",
     "hrms.view_all": "Barcha xodimlarning ish vaqti (smena) tarixini ko'rish",
     "pms.manage": "Mehmonxona xonalari va bronlarni boshqarish",

@@ -4,12 +4,15 @@ from sqlalchemy import func, case
 from datetime import datetime, timedelta
 
 from app.db.session import get_db
-from app.core.tenant import get_current_company_id
+from app.core.tenant import get_current_company_id, get_current_user_id
 from app.core.permissions import require_permission
 from app.core.pagination import Page, PageParams, paginate, build_page
+from app.core.audit_log import record_audit
+from app.core.logging_config import get_logger
 from app.modules.finance import models, schemas
 
 router = APIRouter(prefix="/finance", tags=["FMS - Moliya"])
+logger = get_logger(__name__)
 
 
 @router.get(
@@ -38,6 +41,49 @@ def list_transactions(
     query = query.order_by(models.Transaction.created_at.desc())
     items, total = paginate(query, params)
     return build_page(items, total, params)
+
+
+@router.post(
+    "/expenses",
+    response_model=schemas.TransactionOut,
+    summary="Xarajat (chiqim) qo'lda qo'shish",
+)
+def create_expense(
+    payload: schemas.ExpenseCreate,
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_current_company_id),
+    actor_id: int = Depends(get_current_user_id),
+    _: None = Depends(require_permission("finance.manage")),
+):
+    """
+    Ijaraga, kommunal xizmatlarga, ish haqiga va h.k. — avtomatik
+    yozilmaydigan har qanday xarajatni qo'lda kiritish uchun.
+    Savdo/checkout kabi avtomatik kirim yozuvlaridan farqli, bu yerda
+    foydalanuvchi bevosita summani va sababni kiritadi.
+    """
+    transaction = models.Transaction(
+        company_id=company_id,
+        type=models.TransactionType.EXPENSE,
+        amount=payload.amount,
+        source=payload.source,
+    )
+    db.add(transaction)
+    db.flush()
+
+    record_audit(
+        db, company_id, actor_id, "expense.create",
+        entity_type="transaction", entity_id=transaction.id,
+        details=f"{payload.source}: {payload.amount}",
+    )
+
+    db.commit()
+    db.refresh(transaction)
+
+    logger.info(
+        "Xarajat qo'shildi: company=%s amount=%s source=%s",
+        company_id, payload.amount, payload.source,
+    )
+    return transaction
 
 
 @router.get(
